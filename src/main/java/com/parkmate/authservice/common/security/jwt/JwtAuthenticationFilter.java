@@ -23,6 +23,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+
+        // 화이트리스트 경로 지정 (토큰 없이 접근 허용)
+        return path.startsWith("/api/v1/login")
+                || path.startsWith("/api/v1/logout")
+                || path.startsWith("/api/v1/register")
+                || path.startsWith("/api/v1/sendVerification")
+                || path.startsWith("/api/v1/verifyCode");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
@@ -45,4 +57,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+
+
 }

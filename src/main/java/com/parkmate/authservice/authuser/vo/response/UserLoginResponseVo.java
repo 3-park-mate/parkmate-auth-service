@@ -12,8 +12,7 @@ public class UserLoginResponseVo {
     private String accessToken;
     private String refreshToken;
     private String userUuid;
-
-
+    
     @Builder
     private UserLoginResponseVo(String accessToken, String refreshToken, String userUuid) {
         this.accessToken = accessToken;

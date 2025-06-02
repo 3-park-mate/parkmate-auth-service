@@ -14,17 +14,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Slf4j
 public class BaseExceptionHandler {
-    /**
-     * 발생한 예외 처리
-     */
+
     @ExceptionHandler(BaseException.class)
     protected ApiResponse<Void> BaseError(BaseException e) {
+
         log.error("BaseException -> {} ({})", e.getStatus(), e.getMessage());
         return ApiResponse.error(e.getStatus());
     }
 
     @ExceptionHandler(RuntimeException.class)
     protected ApiResponse<Void> RuntimeError(RuntimeException e) {
+
         log.error("RuntimeException: ", e);
         for (StackTraceElement s : e.getStackTrace()) {
             System.out.println(s);
@@ -32,11 +32,9 @@ public class BaseExceptionHandler {
         return ApiResponse.error(ResponseStatus.INTERNAL_SERVER_ERROR);
     }
 
-    /**
-     * DTO 유효성 검증 실패 처리 (@Valid)
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ApiResponse<String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+
         String message = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
@@ -47,20 +45,16 @@ public class BaseExceptionHandler {
         return ApiResponse.of(HttpStatus.BAD_REQUEST, message);
     }
 
-    /**
-     * @RequestParam, @PathVariable 유효성 검증 실패 처리
-     */
     @ExceptionHandler(ConstraintViolationException.class)
     protected ApiResponse<String> handleConstraintViolation(ConstraintViolationException ex) {
+
         log.warn("ConstraintViolationException -> {}", ex.getMessage());
         return ApiResponse.of(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    /**
-     * @ModelAttribute 바인딩 오류 처리
-     */
     @ExceptionHandler(BindException.class)
     protected ApiResponse<String> handleBindException(BindException ex) {
+
         String message = ex.getAllErrors()
                 .stream()
                 .map(DefaultMessageSourceResolvable::getDefaultMessage)

@@ -6,12 +6,18 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Comment;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.Collections;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "auth_user")
-public class AuthUser {
+public class AuthUser implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,16 +37,21 @@ public class AuthUser {
     private String password;
 
     @Comment("로그인 실패 횟수")
-    @Column(nullable = false)
-    private int loginFailCount = 0;
+    @Column(nullable = true)
+    private Integer loginFailCount;
 
     @Comment("계정 잠금 여부")
     @Column(nullable = false)
     private boolean accountLocked = false;
 
     @Builder
-    private AuthUser(Long id, String userUuid, String email, String password,
-                 int loginFailCount, boolean accountLocked) {
+    private AuthUser(Long id,
+                     String userUuid,
+                     String email,
+                     String password,
+                     Integer loginFailCount,
+                     boolean accountLocked) {
+
         this.id = id;
         this.userUuid = userUuid;
         this.email = email;
@@ -49,19 +60,46 @@ public class AuthUser {
         this.accountLocked = accountLocked;
     }
 
-    public void increaseLoginFailCount() {
+    public void increaseFailCount() {
         this.loginFailCount++;
-        if (this.loginFailCount >= 5) {
-            this.accountLocked = true;
-        }
     }
 
-    public void resetLoginFailCount() {
+    public void lockAccount() {
+        this.accountLocked = true;
+    }
+
+    public void resetLoginStatus() {
         this.loginFailCount = 0;
         this.accountLocked = false;
     }
 
-    public boolean isAccountLocked() {
-        return accountLocked;
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 }

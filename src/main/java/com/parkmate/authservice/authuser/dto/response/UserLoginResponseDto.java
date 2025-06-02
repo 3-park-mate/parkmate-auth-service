@@ -13,13 +13,18 @@ public class UserLoginResponseDto {
     private String userUuid;
 
     @Builder
-    private UserLoginResponseDto(String accessToken, String refreshToken, String userUuid) {
+    private UserLoginResponseDto(String accessToken,
+                                 String refreshToken,
+                                 String userUuid) {
+
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.userUuid = userUuid;
     }
 
-    public static UserLoginResponseDto of(String userUuid, String accessToken, String refreshToken) {
+    public static UserLoginResponseDto of(String userUuid,
+                                          String accessToken,
+                                          String refreshToken) {
         return UserLoginResponseDto.builder()
                 .userUuid(userUuid)
                 .accessToken(accessToken)

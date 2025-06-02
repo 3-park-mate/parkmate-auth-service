@@ -23,31 +23,27 @@ public class AuthController {
     @PostMapping("/login/user")
     public ApiResponse<UserLoginResponseVo> login(@RequestBody UserLoginRequestVo userLoginRequestVo) {
 
-        UserLoginRequestDto requestDto = UserLoginRequestDto.from(userLoginRequestVo);
-        UserLoginResponseDto responseDto = authService.login(requestDto);
+        UserLoginRequestDto userLoginRequestDto = UserLoginRequestDto.from(userLoginRequestVo);
+        UserLoginResponseDto userLoginResponseDto = authService.login(userLoginRequestDto);
 
         return ApiResponse.of(
                 HttpStatus.OK,
                 "요청에 성공했습니다.",
-                UserLoginResponseVo.from(responseDto)
+                UserLoginResponseVo.from(userLoginResponseDto)
         );
     }
 
     @PostMapping("/logout/user")
     public ApiResponse<String> logout(@RequestParam("useruuid") String userUuid) {
-
-        authService.logout(userUuid);
-        return ApiResponse.of(
-                HttpStatus.RESET_CONTENT,
-                "로그아웃 되었습니다."
-        );
+        authService.logout(userUuid);  // refreshToken 제거
+        return ApiResponse.of(HttpStatus.RESET_CONTENT, "로그아웃 되었습니다.");
     }
 
     @PostMapping("/register/user")
     public ApiResponse<String> register(@Valid @RequestBody UserRegisterRequestVo userRegisterRequestVo) {
 
-        UserRegisterRequestDto requestDto = UserRegisterRequestDto.from(userRegisterRequestVo);
-        authService.register(requestDto);
+        UserRegisterRequestDto userRegisterRequestDto = UserRegisterRequestDto.from(userRegisterRequestVo);
+        authService.register(userRegisterRequestDto);
 
         return ApiResponse.of(
                 HttpStatus.CREATED,

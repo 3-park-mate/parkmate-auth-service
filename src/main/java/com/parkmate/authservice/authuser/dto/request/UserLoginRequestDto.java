@@ -4,6 +4,7 @@ import com.parkmate.authservice.authuser.vo.request.UserLoginRequestVo;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Getter
 @NoArgsConstructor
@@ -24,6 +25,10 @@ public class UserLoginRequestDto {
                 .email(userLoginRequestVo.getEmail())
                 .password(userLoginRequestVo.getPassword())
                 .build();
+    }
+
+    public boolean isPasswordMatch(String encodedPassword, PasswordEncoder passwordEncoder) {
+        return passwordEncoder.matches(this.password, encodedPassword);
     }
 }
 

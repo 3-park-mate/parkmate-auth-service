@@ -6,7 +6,7 @@ import com.parkmate.authservice.authuser.dto.response.UserLoginResponseDto;
 
 public interface AuthService {
 
-    UserLoginResponseDto login(UserLoginRequestDto requestDto);
+    UserLoginResponseDto login(UserLoginRequestDto userLoginRequestDto);
 
     void logout(String userUuid);
 
