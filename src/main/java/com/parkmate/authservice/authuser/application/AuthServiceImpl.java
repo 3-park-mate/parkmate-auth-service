@@ -23,7 +23,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 
 @Service
@@ -39,6 +38,8 @@ public class AuthServiceImpl implements AuthService {
     private final MailService mailService;
     private final AuthenticationManager authenticationManager;
     private final AuthUserPolicyService authUserPolicyService;
+
+    private static final Duration EMAIL_VERIFICATION_TTL = Duration.ofMinutes(3);
 
     @Transactional
     @Override
@@ -81,7 +82,7 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtProvider.generateAccessToken(user.getUserUuid());
         String refreshToken = jwtProvider.generateRefreshToken(user.getUserUuid());
 
-        redisService.saveRefreshToken(user.getUserUuid(), refreshToken, Duration.ofDays(7).toMillis());
+        redisService.saveRefreshToken(user.getUserUuid(), refreshToken);
 
         return UserLoginResponseDto.of(user.getUserUuid(), accessToken, refreshToken);
     }
@@ -123,5 +124,38 @@ public class AuthServiceImpl implements AuthService {
         }
 
         redisService.deleteVerificationCode(userRegisterRequestDto.getEmail());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public void checkEmailDuplicate(String email) {
+
+        if (authRepository.existsByEmail(email)) {
+            throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
+        }
+    }
+
+    @Transactional
+    @Override
+    public void sendVerificationCode(String email) {
+
+        String code = mailService.generateVerificationCode();
+        mailService.sendVerificationEmail(email, code);
+        redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL);
+    }
+
+    @Transactional
+    @Override
+    public void verifyEmailCode(String email, String code) {
+
+        String storedCode = redisService.getVerificationCode(email);
+
+        if (storedCode == null) {
+            throw new BaseException(ResponseStatus.AUTH_VERIFICATION_CODE_NOT_FOUND);
+        }
+
+        if (!code.equals(storedCode)) {
+            throw new BaseException(ResponseStatus.AUTH_VERIFICATION_FAILED);
+        }
     }
 }

@@ -11,4 +11,10 @@ public interface AuthService {
     void logout(String userUuid);
 
     void register(UserRegisterRequestDto userRegisterRequestDto);
+
+    void checkEmailDuplicate(String email);
+
+    void sendVerificationCode(String email);
+
+    void verifyEmailCode(String email, String code);
 }

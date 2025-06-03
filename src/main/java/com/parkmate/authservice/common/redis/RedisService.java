@@ -17,8 +17,11 @@ public class RedisService {
     private static final String LOGIN_FAIL_PREFIX = "login:fail:";
     private static final String REFRESH_TOKEN_PREFIX = "refresh:";
 
-    public void saveVerificationCode(String email, String code, long millis) {
-        redisTemplate.opsForValue().set(buildEmailVerificationKey(email), code, millis, TimeUnit.MILLISECONDS);
+    private static final Duration LOGIN_FAIL_TTL = Duration.ofMinutes(15);
+    private static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(14);
+
+    public void saveVerificationCode(String email, String code, Duration ttl) {
+        redisTemplate.opsForValue().set(buildEmailVerificationKey(email), code, ttl.toMillis(), TimeUnit.MILLISECONDS);
     }
 
     public void deleteVerificationCode(String email) {
@@ -28,7 +31,7 @@ public class RedisService {
     public int incrementLoginFailCount(String email) {
         String key = buildLoginFailKey(email);
         Long count = redisTemplate.opsForValue().increment(key);
-        redisTemplate.expire(key, Duration.ofMinutes(15));
+        redisTemplate.expire(key, LOGIN_FAIL_TTL);
         return count != null ? count.intValue() : 0;
     }
 
@@ -36,12 +39,21 @@ public class RedisService {
         redisTemplate.delete(buildLoginFailKey(email));
     }
 
-    public void saveRefreshToken(String userUuid, String refreshToken, long expireMillis) {
-        redisTemplate.opsForValue().set(buildRefreshTokenKey(userUuid), refreshToken, expireMillis, TimeUnit.MILLISECONDS);
+    public void saveRefreshToken(String userUuid, String refreshToken) {
+        redisTemplate.opsForValue().set(
+                buildRefreshTokenKey(userUuid),
+                refreshToken,
+                REFRESH_TOKEN_TTL.toMillis(),
+                TimeUnit.MILLISECONDS
+        );
     }
 
     public void deleteRefreshToken(String userUuid) {
         redisTemplate.delete(buildRefreshTokenKey(userUuid));
+    }
+
+    public String getVerificationCode(String email) {
+        return redisTemplate.opsForValue().get(buildEmailVerificationKey(email));
     }
 
     // ==================== Key 생성 메서드 ====================
