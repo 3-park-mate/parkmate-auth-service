@@ -12,32 +12,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class UserRegisterRequestDto {
 
     private String email;
-    private String name;
     private String password;
-    private String phoneNumber;
-    private String verificationCode;
 
     @Builder
     private UserRegisterRequestDto(String email,
-                                   String name,
-                                   String password,
-                                   String phoneNumber,
-                                   String verificationCode) {
+                                   String password) {
         this.email = email;
-        this.name = name;
         this.password = password;
-        this.phoneNumber = phoneNumber;
-        this.verificationCode = verificationCode;
     }
 
     public static UserRegisterRequestDto from(UserRegisterRequestVo userRegisterRequestVo) {
 
         return UserRegisterRequestDto.builder()
                 .email(userRegisterRequestVo.getEmail())
-                .name(userRegisterRequestVo.getName())
                 .password(userRegisterRequestVo.getPassword())
-                .phoneNumber(userRegisterRequestVo.getPhoneNumber())
-                .verificationCode(userRegisterRequestVo.getVerificationCode())
                 .build();
     }
 

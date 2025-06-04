@@ -31,6 +31,7 @@ public enum ResponseStatus {
     AUTH_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, false, 410, "이미 존재하는 이메일입니다."),
     AUTH_ACCOUNT_LOCKED(HttpStatus.LOCKED, false, 411, "로그인 실패가 누적되어 계정이 잠금 처리되었습니다. 이메일을 확인하세요."),
     AUTH_VERIFICATION_CODE_NOT_FOUND(HttpStatus.UNAUTHORIZED, false, 412, "인증코드가 만료되었거나 존재하지 않습니다."),
+    AUTH_SOCIAL_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, false, 413, "지원하지 않는 소셜 로그인 제공자입니다."),
 
     // ❗ 5xx: 서버 오류
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 500, "서버 내부 오류가 발생했습니다."),

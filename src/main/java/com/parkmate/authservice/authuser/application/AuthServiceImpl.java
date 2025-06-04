@@ -2,12 +2,20 @@ package com.parkmate.authservice.authuser.application;
 
 import com.parkmate.authservice.authuser.application.policy.AuthUserPolicyService;
 import com.parkmate.authservice.authuser.domain.AuthUser;
+import com.parkmate.authservice.authuser.domain.LoginType;
+import com.parkmate.authservice.authuser.domain.SocialProvider;
+import com.parkmate.authservice.authuser.dto.request.SocialLoginRequestDto;
+import com.parkmate.authservice.authuser.dto.request.SocialRegisterRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserLoginRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserRegisterRequestDto;
 import com.parkmate.authservice.authuser.dto.request.feign.UserRegisterRequestForUserServiceDto;
+import com.parkmate.authservice.authuser.dto.response.SocialLoginResponseDto;
 import com.parkmate.authservice.authuser.dto.response.UserLoginResponseDto;
 import com.parkmate.authservice.authuser.infrastructure.AuthRepository;
+import com.parkmate.authservice.authuser.infrastructure.client.SocialOAuthClient;
 import com.parkmate.authservice.authuser.infrastructure.client.UserFeignClient;
+import com.parkmate.authservice.authuser.vo.request.SocialRegisterRequestVo;
+import com.parkmate.authservice.authuser.vo.request.UserRegisterRequestVo;
 import com.parkmate.authservice.common.exception.BaseException;
 import com.parkmate.authservice.common.generator.UUIDGenerator;
 import com.parkmate.authservice.common.mail.MailService;
@@ -15,6 +23,7 @@ import com.parkmate.authservice.common.redis.RedisService;
 import com.parkmate.authservice.common.response.ResponseStatus;
 import com.parkmate.authservice.common.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,7 +38,6 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-
     private final AuthRepository authRepository;
     private final PasswordEncoder passwordEncoder;
     private final RedisService redisService;
@@ -38,27 +46,24 @@ public class AuthServiceImpl implements AuthService {
     private final MailService mailService;
     private final AuthenticationManager authenticationManager;
     private final AuthUserPolicyService authUserPolicyService;
+    private final SocialOAuthClient socialOAuthClient;
 
     private static final Duration EMAIL_VERIFICATION_TTL = Duration.ofMinutes(3);
 
     @Transactional
     @Override
     public UserLoginResponseDto login(UserLoginRequestDto userLoginRequestDto) {
-
         AuthUser user = authRepository.findByEmail(userLoginRequestDto.getEmail())
                 .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
 
         if (authUserPolicyService.isAccountLocked(user)) {
-
             throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
         }
 
         if (!userLoginRequestDto.isPasswordMatch(user.getPassword(), passwordEncoder)) {
-
             int failCount = redisService.incrementLoginFailCount(userLoginRequestDto.getEmail());
 
             if (authUserPolicyService.shouldLockAccount(failCount)) {
-
                 user.lockAccount();
                 authRepository.save(user);
 
@@ -90,14 +95,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void logout(String userUuid) {
-
         redisService.deleteRefreshToken(userUuid);
     }
 
     @Transactional
     @Override
-    public void register(UserRegisterRequestDto userRegisterRequestDto) {
-
+    public void register(UserRegisterRequestDto userRegisterRequestDto, UserRegisterRequestVo vo) {
         String userUuid = UUIDGenerator.generateUUID();
         AuthUser user = userRegisterRequestDto.toEntity(userUuid, passwordEncoder);
 
@@ -109,16 +112,13 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             UserRegisterRequestForUserServiceDto req = UserRegisterRequestForUserServiceDto.of(
-
                     userUuid,
-                    userRegisterRequestDto.getEmail(),
-                    userRegisterRequestDto.getName(),
-                    userRegisterRequestDto.getPhoneNumber()
+                    vo.getName(),
+                    vo.getPhoneNumber()
             );
             userFeignClient.registerUser(req);
 
         } catch (Exception e) {
-
             authRepository.deleteById(user.getId());
             throw new BaseException(ResponseStatus.AUTH_USER_SERVICE_ERROR);
         }
@@ -129,7 +129,6 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     @Override
     public void checkEmailDuplicate(String email) {
-
         if (authRepository.existsByEmail(email)) {
             throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
         }
@@ -138,7 +137,6 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void sendVerificationCode(String email) {
-
         String code = mailService.generateVerificationCode();
         mailService.sendVerificationEmail(email, code);
         redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL);
@@ -147,7 +145,6 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void verifyEmailCode(String email, String code) {
-
         String storedCode = redisService.getVerificationCode(email);
 
         if (storedCode == null) {
@@ -156,6 +153,64 @@ public class AuthServiceImpl implements AuthService {
 
         if (!code.equals(storedCode)) {
             throw new BaseException(ResponseStatus.AUTH_VERIFICATION_FAILED);
+        }
+    }
+
+    @Transactional
+    @Override
+    public SocialLoginResponseDto loginSocialUser(SocialLoginRequestDto socialLoginRequestDto) {
+        String provider = socialLoginRequestDto.getProvider();
+        String accessToken = socialLoginRequestDto.getAccessToken();
+
+        String email = socialOAuthClient.getEmail(provider, accessToken);
+
+        AuthUser user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
+
+        String accessJwt = jwtProvider.generateAccessToken(user.getUserUuid());
+        String refreshJwt = jwtProvider.generateRefreshToken(user.getUserUuid());
+
+        redisService.saveRefreshToken(user.getUserUuid(), refreshJwt);
+
+        return SocialLoginResponseDto.of(user.getUserUuid(), accessJwt, refreshJwt);
+    }
+
+    @Transactional
+    @Override
+    public void registerSocialUser(String accessToken, SocialRegisterRequestVo socialRegisterRequestVo) {
+
+        String email = socialOAuthClient.getEmail("kakao", accessToken);
+
+        if (authRepository.existsByEmail(email)) {
+            throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
+        }
+
+        String userUuid = UUIDGenerator.generateUUID();
+
+        AuthUser user = AuthUser.builder()
+                .userUuid(userUuid)
+                .email(email)
+                .loginType(LoginType.SOCIAL)
+                .provider(SocialProvider.KAKAO)
+                .build();
+
+        AuthUser savedUser;
+        try {
+            savedUser = authRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
+        }
+
+        try {
+            UserRegisterRequestForUserServiceDto feignDto = UserRegisterRequestForUserServiceDto.of(
+                    savedUser.getUserUuid(),
+                    socialRegisterRequestVo.getName(),
+                    socialRegisterRequestVo.getPhoneNumber()
+            );
+            userFeignClient.registerUser(feignDto);
+        } catch (Exception e) {
+            authRepository.deleteById(savedUser.getId());
+            throw new BaseException(ResponseStatus.AUTH_USER_SERVICE_ERROR);
         }
     }
 }

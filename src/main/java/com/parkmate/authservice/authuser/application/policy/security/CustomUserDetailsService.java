@@ -1,6 +1,5 @@
 package com.parkmate.authservice.authuser.application.policy.security;
 
-import com.parkmate.authservice.authuser.domain.AuthUser;
 import com.parkmate.authservice.authuser.infrastructure.AuthRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,8 +16,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
-        AuthUser authUser = authRepository.findByEmail(email)
+        return authRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("존재하지 않는 사용자입니다: " + email));
-        return authUser;
     }
 }

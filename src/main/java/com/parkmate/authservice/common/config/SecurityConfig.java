@@ -37,6 +37,8 @@ public class SecurityConfig {
                                 "/api/v1/sendVerificationCode",
                                 "/api/v1/verifyCode",
                                 "/api/v1/sendVerification/**",
+                                "/api/v1/socialLogin",
+                                "/api/v1/socialRegister",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",

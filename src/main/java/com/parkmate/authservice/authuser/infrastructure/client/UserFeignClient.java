@@ -15,4 +15,8 @@ public interface UserFeignClient {
 
     @PostMapping("/internal/users/register")
     void registerUser(@RequestBody UserRegisterRequestForUserServiceDto userRegisterRequestForUserServiceDto);
+
+    @PostMapping("/internal/users/register/social")
+    void registerSocialUser(@RequestBody UserRegisterRequestForUserServiceDto userRegisterRequestForUserServiceDto);
+
 }
