@@ -4,8 +4,6 @@ import com.parkmate.authservice.authuser.application.policy.AuthUserPolicyServic
 import com.parkmate.authservice.authuser.domain.AuthUser;
 import com.parkmate.authservice.authuser.domain.LoginType;
 import com.parkmate.authservice.authuser.domain.SocialProvider;
-import com.parkmate.authservice.authuser.dto.request.SocialLoginRequestDto;
-import com.parkmate.authservice.authuser.dto.request.SocialRegisterRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserLoginRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserRegisterRequestDto;
 import com.parkmate.authservice.authuser.dto.request.feign.UserRegisterRequestForUserServiceDto;
@@ -23,18 +21,15 @@ import com.parkmate.authservice.common.redis.RedisService;
 import com.parkmate.authservice.common.response.ResponseStatus;
 import com.parkmate.authservice.common.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 
-@Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
@@ -48,46 +43,32 @@ public class AuthServiceImpl implements AuthService {
     private final AuthUserPolicyService authUserPolicyService;
     private final SocialOAuthClient socialOAuthClient;
 
+    private static final long REFRESH_TOKEN_EXPIRY_MILLIS = Duration.ofDays(7).toMillis();
     private static final Duration EMAIL_VERIFICATION_TTL = Duration.ofMinutes(3);
+
 
     @Transactional
     @Override
     public UserLoginResponseDto login(UserLoginRequestDto userLoginRequestDto) {
+
         AuthUser user = authRepository.findByEmail(userLoginRequestDto.getEmail())
                 .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
 
-        if (authUserPolicyService.isAccountLocked(user)) {
-            throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
-        }
+        validateAccountNotLocked(user);
 
         if (!userLoginRequestDto.isPasswordMatch(user.getPassword(), passwordEncoder)) {
-            int failCount = redisService.incrementLoginFailCount(userLoginRequestDto.getEmail());
-
-            if (authUserPolicyService.shouldLockAccount(failCount)) {
-                user.lockAccount();
-                authRepository.save(user);
-
-                String userName = userFeignClient.findNameByEmail(user.getEmail());
-                mailService.sendAccountLockEmail(user.getEmail(), userName);
-            }
-
+            handleFailedLogin(user);
             throw new BaseException(ResponseStatus.INVALID_AUTH_PASSWORD);
         }
 
-        redisService.resetLoginFailCount(userLoginRequestDto.getEmail());
+        resetLoginFailure(user.getEmail());
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        userLoginRequestDto.getEmail(),
-                        userLoginRequestDto.getPassword()
-                )
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        authenticateUser(userLoginRequestDto);
 
         String accessToken = jwtProvider.generateAccessToken(user.getUserUuid());
         String refreshToken = jwtProvider.generateRefreshToken(user.getUserUuid());
 
-        redisService.saveRefreshToken(user.getUserUuid(), refreshToken);
+        redisService.saveRefreshToken(user.getUserUuid(), refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
 
         return UserLoginResponseDto.of(user.getUserUuid(), accessToken, refreshToken);
     }
@@ -100,30 +81,70 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public void register(UserRegisterRequestDto userRegisterRequestDto, UserRegisterRequestVo vo) {
-        String userUuid = UUIDGenerator.generateUUID();
-        AuthUser user = userRegisterRequestDto.toEntity(userUuid, passwordEncoder);
+    public void register(UserRegisterRequestDto userRegisterRequestDto, UserRegisterRequestVo userRegisterRequestVo) {
 
+        String userUuid = UUIDGenerator.generateUUID();
+        AuthUser newUser = userRegisterRequestDto.toEntity(userUuid, passwordEncoder);
+
+        saveUserOrThrow(newUser);
+        try {
+            UserRegisterRequestForUserServiceDto dto = UserRegisterRequestForUserServiceDto.of(
+                    userUuid,
+                    userRegisterRequestVo.getName(),
+                    userRegisterRequestVo.getPhoneNumber()
+            );
+            userFeignClient.registerUser(dto);
+        } catch (Exception e) {
+            authRepository.deleteById(newUser.getId());
+            throw new BaseException(ResponseStatus.AUTH_USER_SERVICE_ERROR);
+        }
+
+        redisService.deleteVerificationCode(userRegisterRequestDto.getEmail());
+    }
+
+    // 🔹 분리된 유틸성 메서드들
+
+    private void validateAccountNotLocked(AuthUser authUser) {
+        if (authUserPolicyService.isAccountLocked(authUser)) {
+            throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
+        }
+    }
+
+    private void handleFailedLogin(AuthUser authUser) {
+        int failCount = redisService.incrementLoginFailCount(authUser.getEmail());
+
+        if (authUserPolicyService.shouldLockAccount(failCount)) {
+            authUser.lockAccount();
+            authRepository.save(authUser);
+
+            try {
+                String userName = userFeignClient.findNameByEmail(authUser.getEmail());
+                mailService.sendAccountLockEmail(authUser.getEmail(), userName);
+            } catch (Exception e) {
+                // 로그 처리 또는 감싸기
+            }
+        }
+    }
+
+    private void resetLoginFailure(String email) {
+        redisService.resetLoginFailCount(email);
+    }
+
+    private void authenticateUser(UserLoginRequestDto request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(), request.getPassword()
+                )
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void saveUserOrThrow(AuthUser user) {
         try {
             authRepository.save(user);
         } catch (DataIntegrityViolationException e) {
             throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
         }
-
-        try {
-            UserRegisterRequestForUserServiceDto req = UserRegisterRequestForUserServiceDto.of(
-                    userUuid,
-                    vo.getName(),
-                    vo.getPhoneNumber()
-            );
-            userFeignClient.registerUser(req);
-
-        } catch (Exception e) {
-            authRepository.deleteById(user.getId());
-            throw new BaseException(ResponseStatus.AUTH_USER_SERVICE_ERROR);
-        }
-
-        redisService.deleteVerificationCode(userRegisterRequestDto.getEmail());
     }
 
     @Transactional(readOnly = true)
@@ -158,33 +179,31 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public SocialLoginResponseDto loginSocialUser(SocialLoginRequestDto socialLoginRequestDto) {
-        String provider = socialLoginRequestDto.getProvider();
-        String accessToken = socialLoginRequestDto.getAccessToken();
-
-        String email = socialOAuthClient.getEmail(provider, accessToken);
-
-        AuthUser user = authRepository.findByEmail(email)
-                .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
-
-        String accessJwt = jwtProvider.generateAccessToken(user.getUserUuid());
-        String refreshJwt = jwtProvider.generateRefreshToken(user.getUserUuid());
-
-        redisService.saveRefreshToken(user.getUserUuid(), refreshJwt);
-
-        return SocialLoginResponseDto.of(user.getUserUuid(), accessJwt, refreshJwt);
-    }
-
-    @Transactional
-    @Override
-    public void registerSocialUser(String accessToken, SocialRegisterRequestVo socialRegisterRequestVo) {
-
+    public SocialLoginResponseDto registerSocialUser(String accessToken, SocialRegisterRequestVo socialRegisterRequestVo) {
         String email = socialOAuthClient.getEmail("kakao", accessToken);
 
-        if (authRepository.existsByEmail(email)) {
-            throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
+        AuthUser existingUser = authRepository.findByEmail(email).orElse(null);
+        if (existingUser != null) {
+            return generateTokensAndSave(existingUser.getUserUuid());
         }
 
+        AuthUser newUser = registerNewSocialUser(email);
+        try {
+            UserRegisterRequestForUserServiceDto feignDto = UserRegisterRequestForUserServiceDto.of(
+                    newUser.getUserUuid(),
+                    socialRegisterRequestVo.getName(),
+                    socialRegisterRequestVo.getPhoneNumber()
+            );
+            userFeignClient.registerUser(feignDto);
+        } catch (Exception e) {
+            authRepository.deleteById(newUser.getId());
+            throw new BaseException(ResponseStatus.AUTH_USER_SERVICE_ERROR);
+        }
+
+        return generateTokensAndSave(newUser.getUserUuid());
+    }
+
+    private AuthUser registerNewSocialUser(String email) {
         String userUuid = UUIDGenerator.generateUUID();
 
         AuthUser user = AuthUser.builder()
@@ -194,23 +213,19 @@ public class AuthServiceImpl implements AuthService {
                 .provider(SocialProvider.KAKAO)
                 .build();
 
-        AuthUser savedUser;
         try {
-            savedUser = authRepository.save(user);
+            return authRepository.save(user);
         } catch (DataIntegrityViolationException e) {
             throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
         }
+    }
 
-        try {
-            UserRegisterRequestForUserServiceDto feignDto = UserRegisterRequestForUserServiceDto.of(
-                    savedUser.getUserUuid(),
-                    socialRegisterRequestVo.getName(),
-                    socialRegisterRequestVo.getPhoneNumber()
-            );
-            userFeignClient.registerUser(feignDto);
-        } catch (Exception e) {
-            authRepository.deleteById(savedUser.getId());
-            throw new BaseException(ResponseStatus.AUTH_USER_SERVICE_ERROR);
-        }
+    private SocialLoginResponseDto generateTokensAndSave(String userUuid) {
+        String accessToken = jwtProvider.generateAccessToken(userUuid);
+        String refreshToken = jwtProvider.generateRefreshToken(userUuid);
+        redisService.saveRefreshToken(userUuid, refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
+
+        return SocialLoginResponseDto.of(userUuid, accessToken, refreshToken);
     }
 }
+

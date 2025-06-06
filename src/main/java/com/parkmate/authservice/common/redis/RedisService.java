@@ -3,7 +3,6 @@ package com.parkmate.authservice.common.redis;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -39,11 +38,11 @@ public class RedisService {
         redisTemplate.delete(buildLoginFailKey(email));
     }
 
-    public void saveRefreshToken(String userUuid, String refreshToken) {
+    public void saveRefreshToken(String userUuid, String refreshToken, long ttlMillis) {
         redisTemplate.opsForValue().set(
                 buildRefreshTokenKey(userUuid),
                 refreshToken,
-                REFRESH_TOKEN_TTL.toMillis(),
+                ttlMillis,
                 TimeUnit.MILLISECONDS
         );
     }

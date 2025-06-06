@@ -17,7 +17,6 @@ public class SocialRegisterRequestDto {
     private String email;
     private SocialProvider provider;
 
-
     @Builder
     private SocialRegisterRequestDto(String userUuid,
                                      String email,
@@ -28,6 +27,7 @@ public class SocialRegisterRequestDto {
         this.provider = provider;
 
     }
+
     public static SocialRegisterRequestDto from(SocialRegisterRequestVo socialRegisterRequestVo) {
 
         return SocialRegisterRequestDto.builder()
@@ -36,6 +36,7 @@ public class SocialRegisterRequestDto {
                 .provider(socialRegisterRequestVo.getProvider())
                 .build();
     }
+
     public AuthUser toEntity() {
 
         return AuthUser.builder()

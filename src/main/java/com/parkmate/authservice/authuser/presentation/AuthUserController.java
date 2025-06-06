@@ -1,8 +1,6 @@
 package com.parkmate.authservice.authuser.presentation;
 
 import com.parkmate.authservice.authuser.application.AuthService;
-import com.parkmate.authservice.authuser.dto.request.SocialLoginRequestDto;
-import com.parkmate.authservice.authuser.dto.request.SocialRegisterRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserLoginRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserRegisterRequestDto;
 import com.parkmate.authservice.authuser.dto.response.SocialLoginResponseDto;
@@ -13,11 +11,9 @@ import com.parkmate.authservice.authuser.vo.response.UserLoginResponseVo;
 import com.parkmate.authservice.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -33,7 +29,7 @@ public class AuthUserController {
 
         return ApiResponse.of(
                 HttpStatus.OK,
-                "요청에 성공했습니다.",
+                "로그인에 성공했습니다.",
                 UserLoginResponseVo.from(userLoginResponseDto)
         );
     }
@@ -66,7 +62,7 @@ public class AuthUserController {
         authService.checkEmailDuplicate(email);
         return ApiResponse.of(
                 HttpStatus.OK,
-                "이메일 중복 검사 완료되었습니다."
+                "사용 가능한 이메일입니다."
         );
     }
 
@@ -76,7 +72,7 @@ public class AuthUserController {
         authService.sendVerificationCode(email);
         return ApiResponse.of(
                 HttpStatus.OK,
-                "이메일 인증번호 전송이 완료되었습니다."
+                "인증 코드가 이메일로 전송되었습니다."
         );
     }
 
@@ -93,30 +89,19 @@ public class AuthUserController {
         );
     }
 
-    @PostMapping("/socialLogin")
-    public ApiResponse<SocialLoginResponseVo> loginSocialUser(@RequestBody SocialLoginRequestVo socialLoginRequestVo) {
-
-        SocialLoginRequestDto socialLoginRequestDto = SocialLoginRequestDto.from(socialLoginRequestVo);
-        SocialLoginResponseDto responseDto = authService.loginSocialUser(socialLoginRequestDto);
-
-        return ApiResponse.of(
-                HttpStatus.OK,
-                "요청에 성공했습니다.",
-                SocialLoginResponseVo.from(responseDto)
-        );
-    }
-
     @PostMapping("/socialRegister")
-    public ApiResponse<String> registerSocialUser(
+    public ApiResponse<SocialLoginResponseVo>registerSocialUser(
+
             @RequestHeader("Authorization") String bearerToken,
             @Valid @RequestBody SocialRegisterRequestVo socialRegisterRequestVo
     ) {
         String accessToken = bearerToken.replace("Bearer ", "");
-        authService.registerSocialUser(accessToken, socialRegisterRequestVo);
+        SocialLoginResponseDto responseDto = authService.registerSocialUser(accessToken, socialRegisterRequestVo);
 
         return ApiResponse.of(
-                HttpStatus.CREATED,
-                "회원가입이 완료되었습니다."
+                HttpStatus.OK,
+                "소셜 로그인 및 회원가입에 성공했습니다.",
+                SocialLoginResponseVo.from(responseDto)
         );
     }
 }

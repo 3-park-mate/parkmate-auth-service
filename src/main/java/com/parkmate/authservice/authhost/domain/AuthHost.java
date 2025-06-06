@@ -1,4 +1,4 @@
-package com.parkmate.authservice.authuser.domain;
+package com.parkmate.authservice.authhost.domain;
 
 import com.parkmate.authservice.common.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -15,54 +15,40 @@ import java.util.Collections;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "auth_user")
-public class AuthUser extends BaseEntity implements UserDetails {
+@Table(name = "auth_host")
+public class AuthHost extends BaseEntity implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Comment("회원 고유 PK")
+    @Comment("호스트 고유 PK")
     private Long id;
 
-    @Comment("회원 UUID")
+    @Comment("호스트 UUID")
     @Column(nullable = false, unique = true, length = 36)
-    private String userUuid;
+    private String hostUuid;
 
     @Comment("이메일")
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Comment("비밀번호 (일반 로그인만 사용)")
-    @Column(length = 100)
+    @Comment("비밀번호")
+    @Column(nullable = false, length = 100)
     private String password;
-
-    @Comment("로그인 방식 (NORMAL, SOCIAL)")
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private LoginType loginType;
-
-    @Comment("소셜 제공자 (KAKAO 등, 일반 로그인은 null)")
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private SocialProvider provider;
 
     @Comment("계정 잠금 여부")
     @Column(nullable = false)
     private boolean accountLocked = false;
 
     @Builder
-    private AuthUser(Long id,
-                     String userUuid,
+    private AuthHost(Long id,
+                     String hostUuid,
                      String email,
                      String password,
-                     LoginType loginType,
-                     SocialProvider provider,
                      boolean accountLocked) {
         this.id = id;
-        this.userUuid = userUuid;
+        this.hostUuid = hostUuid;
         this.email = email;
         this.password = password;
-        this.loginType = loginType;
-        this.provider = provider;
         this.accountLocked = accountLocked;
     }
 
