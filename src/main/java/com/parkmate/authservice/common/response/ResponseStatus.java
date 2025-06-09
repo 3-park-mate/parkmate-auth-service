@@ -37,8 +37,10 @@ public enum ResponseStatus {
     // ❗ 5xx: 서버 오류
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 500, "서버 내부 오류가 발생했습니다."),
     AUTH_USER_SERVICE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 501, "사용자 서비스 연동에 실패했습니다."),
-    AUTH_BIZNO_API_FAILED(HttpStatus.SERVICE_UNAVAILABLE, false, 503, "사업자등록번호 검증 서비스에 실패했습니다.");
-
+    AUTH_USER_REGISTER_FAILED(HttpStatus.SERVICE_UNAVAILABLE, false, 502, "사용자 서비스에 회원 등록 요청이 실패했습니다."),
+    AUTH_BIZNO_API_FAILED(HttpStatus.SERVICE_UNAVAILABLE, false, 503, "사업자등록번호 검증 서비스에 실패했습니다."),
+    AUTH_LOCK_MAIL_FAILED(HttpStatus.SERVICE_UNAVAILABLE, false, 504, "계정 잠금 이메일 발송에 실패했습니다."),
+    AUTH_HOST_SERVICE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 505, "호스트 서비스 연동에 실패했습니다.");
     private final HttpStatus httpStatus;
     private final boolean isSuccess;
     private final int code;

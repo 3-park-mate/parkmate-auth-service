@@ -8,6 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 @FeignClient(name = "host-service")
 public interface HostFeignClient {
 
-    @PostMapping("/internal/hosts/register")
+    @PostMapping("/internal/hosts")
     void registerHost(@RequestBody HostRegisterRequestForHostServiceDto hostRegisterRequestForHostServiceDto);
 }

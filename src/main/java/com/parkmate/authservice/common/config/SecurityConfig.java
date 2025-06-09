@@ -35,7 +35,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1/login/**",
+                                "/api/v1/user/**",
+                                "/api/v1/host/**",
                                 "/api/v1/logout/**",
                                 "/api/v1/logout/user",
                                 "/api/v1/register/**",
@@ -67,7 +68,7 @@ public class SecurityConfig {
     /**
      * 일반 사용자 인증 관리자 (User)
      */
-    @Bean
+    @Bean("userAuthenticationManager")
     @Primary // 기본 AuthenticationManager로 사용됨
     public AuthenticationManager userAuthenticationManager() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();

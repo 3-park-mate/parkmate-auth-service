@@ -13,10 +13,10 @@ public interface UserFeignClient {
     @GetMapping("/internal/users/name")
     String  findNameByEmail(@RequestParam("email") String email);
 
-    @PostMapping("/internal/users/register")
+    @PostMapping("/internal/users")
     void registerUser(@RequestBody UserRegisterRequestForUserServiceDto userRegisterRequestForUserServiceDto);
 
-    @PostMapping("/internal/users/register/social")
+    @PostMapping("/internal/users/social")
     void registerSocialUser(@RequestBody UserRegisterRequestForUserServiceDto userRegisterRequestForUserServiceDto);
 
 }

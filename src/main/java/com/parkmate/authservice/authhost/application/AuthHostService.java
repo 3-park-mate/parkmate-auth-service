@@ -11,5 +11,5 @@ public interface AuthHostService {
 
     void logout(String hostUuid);
 
-    void register(HostRegisterRequestDto hostRegisterRequestDto, HostRegisterRequestVo hostRegisterRequestVo);
+    void register(HostRegisterRequestVo hostRegisterRequestVo);
 }

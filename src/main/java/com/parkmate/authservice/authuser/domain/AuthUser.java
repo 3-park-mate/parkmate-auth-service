@@ -40,10 +40,10 @@ public class AuthUser extends BaseEntity implements UserDetails {
     @Column(nullable = false, length = 20)
     private LoginType loginType;
 
-    @Comment("소셜 제공자 (KAKAO 등, 일반 로그인은 null)")
+    @Comment("소셜 제공자 (KAKAO 등, 일반 로그인은 NONE)")
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private SocialProvider provider;
+    @Column(nullable = false, length = 20)
+    private SocialProvider provider = SocialProvider.NONE;
 
     @Comment("계정 잠금 여부")
     @Column(nullable = false)
@@ -68,6 +68,10 @@ public class AuthUser extends BaseEntity implements UserDetails {
 
     public void lockAccount() {
         this.accountLocked = true;
+    }
+
+    public boolean isAccountLocked() {
+        return this.accountLocked;
     }
 
     @Override

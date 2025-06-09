@@ -33,18 +33,15 @@ public class JwtProvider {
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(String subject) {
-
-        return createToken(subject, accessTokenValidityInMs);
+    public String generateAccessToken(String email) {
+        return createToken(email, accessTokenValidityInMs);
     }
 
-    public String generateRefreshToken(String subject) {
-
-        return createToken(subject, refreshTokenValidityInMs);
+    public String generateRefreshToken(String email) {
+        return createToken(email, refreshTokenValidityInMs);
     }
 
     private String createToken(String subject, long validityInMs) {
-
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validityInMs);
 
@@ -57,31 +54,29 @@ public class JwtProvider {
     }
 
     public String extractSubject(String token) {
-
         return Jwts.parserBuilder()
                 .setSigningKey(signingKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .getSubject();
+                .getSubject(); // email 반환
     }
 
     public boolean validateToken(String token) {
-
         try {
-            Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(signingKey)
+                    .build()
+                    .parseClaimsJws(token);
             return true;
         } catch (ExpiredJwtException e) {
-
             return false;
         } catch (JwtException | IllegalArgumentException e) {
-            // 잘못된 토큰 형식
             return false;
         }
     }
 
     public long getRemainingExpiration(String token) {
-
         try {
             Date expirationDate = Jwts.parserBuilder()
                     .setSigningKey(signingKey)

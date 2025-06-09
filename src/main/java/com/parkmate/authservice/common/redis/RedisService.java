@@ -23,6 +23,11 @@ public class RedisService {
         redisTemplate.opsForValue().set(buildEmailVerificationKey(email), code, ttl.toMillis(), TimeUnit.MILLISECONDS);
     }
 
+    public boolean verifyEmailCode(String email, String code) {
+        String storedCode = getVerificationCode(email);
+        return storedCode != null && storedCode.equals(code);
+    }
+
     public void deleteVerificationCode(String email) {
         redisTemplate.delete(buildEmailVerificationKey(email));
     }

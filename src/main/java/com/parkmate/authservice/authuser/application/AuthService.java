@@ -17,9 +17,11 @@ public interface AuthService {
 
     void checkEmailDuplicate(String email);
 
+    boolean isEmailDuplicate(String email);
+
     void sendVerificationCode(String email);
 
-    void verifyEmailCode(String email, String code);
+    boolean verifyEmailCode(String email, String code);
 
-    SocialLoginResponseDto registerSocialUser(String accessToken, SocialRegisterRequestVo socialRegisterRequestVo);
+    SocialLoginResponseDto registerSocialUser(String socialAccessToken, SocialRegisterRequestVo socialRegisterRequestVo);
 }

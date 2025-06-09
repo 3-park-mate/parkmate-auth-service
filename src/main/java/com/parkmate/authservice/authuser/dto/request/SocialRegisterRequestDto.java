@@ -30,6 +30,10 @@ public class SocialRegisterRequestDto {
 
     public static SocialRegisterRequestDto from(SocialRegisterRequestVo socialRegisterRequestVo) {
 
+        if (socialRegisterRequestVo.getProvider() == null) {
+            throw new IllegalArgumentException("SocialProvider 값은 필수입니다.");
+        }
+
         return SocialRegisterRequestDto.builder()
                 .userUuid(UUIDGenerator.generateUUID())
                 .email(socialRegisterRequestVo.getEmail())
@@ -44,7 +48,6 @@ public class SocialRegisterRequestDto {
                 .email(email)
                 .loginType(LoginType.SOCIAL)
                 .provider(provider)
-                // .socialId(socialId) // 필요 시 AuthUser 엔티티에 추가
                 .build();
     }
 }

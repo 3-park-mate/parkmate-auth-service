@@ -1,0 +1,13 @@
+package com.parkmate.authservice.authuser.vo.response;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor(staticName = "of")
+public class VerifyEmailCodeResponseVo {
+
+    private boolean isValid;
+}

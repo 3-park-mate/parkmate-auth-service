@@ -1,5 +1,7 @@
 package com.parkmate.authservice.common.security.jwt;
 
+import com.parkmate.authservice.authuser.domain.AuthUser;
+import com.parkmate.authservice.authuser.infrastructure.AuthRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,9 +18,11 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final AuthRepository authRepository;
 
-    public JwtAuthenticationFilter(JwtProvider jwtProvider) {
+    public JwtAuthenticationFilter(JwtProvider jwtProvider, AuthRepository authRepository) {
         this.jwtProvider = jwtProvider;
+        this.authRepository = authRepository;
     }
 
     @Override
@@ -26,11 +30,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         // 화이트리스트 경로 지정 (토큰 없이 접근 허용)
-        return path.startsWith("/api/v1/login")
-                || path.startsWith("/api/v1/logout")
-                || path.startsWith("/api/v1/register")
+        return path.startsWith("/api/v1/user/login")
+                || path.startsWith("/api/v1/user/logout")
+                || path.startsWith("/api/v1/user/register")
+                || path.startsWith("/api/v1/host/login")
+                || path.startsWith("/api/v1/host/logout")
+                || path.startsWith("/api/v1/host/register")
                 || path.startsWith("/api/v1/sendVerification")
-                || path.startsWith("/api/v1/verifyCode");
+                || path.startsWith("/api/v1/verifyCode")
+                || path.startsWith("/api/v1/socialLogin")
+                || path.startsWith("/api/v1/socialRegister");
     }
 
     @Override
@@ -44,15 +53,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
 
             if (jwtProvider.validateToken(token)) {
-                String userUuid = jwtProvider.extractSubject(token);
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userUuid, null, Collections.emptyList());
+                String email = jwtProvider.extractSubject(token);
 
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                AuthUser user = authRepository.findByEmail(email)
+                        .orElse(null);
+
+                if (user != null) {
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    user.getUserUuid(),
+                                    null,
+                                    Collections.emptyList()
+                            );
+
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         }
+
         filterChain.doFilter(request, response);
     }
 }

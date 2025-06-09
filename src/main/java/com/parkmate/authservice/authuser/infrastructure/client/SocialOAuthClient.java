@@ -1,5 +1,6 @@
 package com.parkmate.authservice.authuser.infrastructure.client;
 
+import com.parkmate.authservice.authuser.domain.SocialProvider;
 import com.parkmate.authservice.common.exception.BaseException;
 import com.parkmate.authservice.common.response.ResponseStatus;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +21,9 @@ public class SocialOAuthClient {
     @Value("${oauth.kakao.user-info-uri}")
     private String kakaoUserInfoUri;
 
-    public String getEmail(String provider, String accessToken) {
+    public String getEmail(SocialProvider provider, String accessToken) {
 
-        if (!"kakao".equalsIgnoreCase(provider)) {
+        if (provider != SocialProvider.KAKAO) {
             throw new BaseException(ResponseStatus.AUTH_SOCIAL_PROVIDER_NOT_SUPPORTED);
         }
 
