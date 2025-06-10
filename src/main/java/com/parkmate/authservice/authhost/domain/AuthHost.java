@@ -52,6 +52,10 @@ public class AuthHost extends BaseEntity implements UserDetails {
         this.accountLocked = accountLocked;
     }
 
+    public boolean isAccountLocked() {
+        return this.accountLocked;
+    }
+
     public void lockAccount() {
         this.accountLocked = true;
     }

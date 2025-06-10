@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 public class SocialLoginRequestVo {
 
     @NotBlank(message = "소셜 로그인 제공자는 필수입니다. (예: kakao)")
-    private String provider;
+    private String socialProvider;
 
     @NotBlank(message = "소셜 액세스 토큰은 필수입니다.")
     private String accessToken;

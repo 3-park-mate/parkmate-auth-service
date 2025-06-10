@@ -43,7 +43,7 @@ public class AuthUser extends BaseEntity implements UserDetails {
     @Comment("소셜 제공자 (KAKAO 등, 일반 로그인은 NONE)")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private SocialProvider provider = SocialProvider.NONE;
+    private SocialProvider socialProvider = SocialProvider.NONE;
 
     @Comment("계정 잠금 여부")
     @Column(nullable = false)
@@ -55,14 +55,14 @@ public class AuthUser extends BaseEntity implements UserDetails {
                      String email,
                      String password,
                      LoginType loginType,
-                     SocialProvider provider,
+                     SocialProvider socialProvider,
                      boolean accountLocked) {
         this.id = id;
         this.userUuid = userUuid;
         this.email = email;
         this.password = password;
         this.loginType = loginType;
-        this.provider = provider;
+        this.socialProvider = socialProvider;
         this.accountLocked = accountLocked;
     }
 

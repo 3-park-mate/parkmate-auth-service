@@ -35,6 +35,9 @@ public class AuthHostServiceImpl implements AuthHostService {
     private final HostFeignClient hostFeignClient;
     private final BiznoVerificationService biznoVerificationService;
 
+    private static final long REFRESH_TOKEN_EXPIRY_MILLIS = Duration.ofDays(7).toMillis();
+    private static final int LOGIN_FAIL_LIMIT = 5;
+
     public AuthHostServiceImpl(
             AuthHostRepository authHostRepository,
             PasswordEncoder passwordEncoder,
@@ -53,8 +56,6 @@ public class AuthHostServiceImpl implements AuthHostService {
         this.authenticationManager = authenticationManager;
     }
 
-    private static final long REFRESH_TOKEN_EXPIRY_MILLIS = Duration.ofDays(7).toMillis();
-
     @Transactional
     @Override
     public HostLoginResponseDto login(HostLoginRequestDto hostLoginRequestDto) {
@@ -62,18 +63,41 @@ public class AuthHostServiceImpl implements AuthHostService {
         AuthHost authHost= authHostRepository.findByEmail(hostLoginRequestDto.getEmail())
                 .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_HOST_NOT_FOUND));
 
+        if (authHost.isAccountLocked()) {
+            throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
+        }
+
         if (!hostLoginRequestDto.isPasswordMatch(authHost.getPassword(), passwordEncoder)) {
+            handleFailedLogin(authHost);
             throw new BaseException(ResponseStatus.INVALID_AUTH_PASSWORD);
         }
 
+        redisService.resetHostLoginFailCount(authHost.getEmail());
+
         authenticateHost(hostLoginRequestDto);
 
-        String accessToken = jwtProvider.generateAccessToken(authHost.getEmail());
-        String refreshToken = jwtProvider.generateRefreshToken(authHost.getEmail());
+        String accessToken = jwtProvider.generateAccessToken();
+        String refreshToken = jwtProvider.generateRefreshToken();
 
         redisService.saveRefreshToken(authHost.getHostUuid(), refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
 
         return HostLoginResponseDto.of(authHost.getHostUuid(), accessToken, refreshToken);
+    }
+
+    private void handleFailedLogin(AuthHost authHost) {
+        int failCount = redisService.incrementHostLoginFailCount(authHost.getEmail());
+
+        if (shouldLockAccount(failCount)) {
+
+            authHost.lockAccount();
+            authHostRepository.save(authHost);
+
+            throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
+        }
+    }
+
+    private boolean shouldLockAccount(int currentFailCount) {
+        return currentFailCount >= LOGIN_FAIL_LIMIT;
     }
 
     @Transactional
@@ -86,24 +110,19 @@ public class AuthHostServiceImpl implements AuthHostService {
     @Override
     public void register(HostRegisterRequestVo hostRegisterRequestVo) {
 
-        // 1️⃣ 사업자등록번호 검증 (가장 먼저)
         biznoVerificationService.verify(hostRegisterRequestVo.getBusinessRegistrationNumber());
 
-        // 2️⃣ 검증 통과 후 UUID 생성
         String hostUuid = UUIDGenerator.generateUUID();
 
-        // 3️⃣ Dto → Entity 변환
         HostRegisterRequestDto hostRegisterRequestDto = HostRegisterRequestDto.from(hostRegisterRequestVo);
         AuthHost host = hostRegisterRequestDto.toEntity(hostUuid, passwordEncoder);
 
-        // 4️⃣ AuthHost 저장
         try {
             authHostRepository.save(host);
         } catch (DataIntegrityViolationException e) {
             throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
         }
 
-        // 5️⃣ host-service 로 Feign 호출
         try {
             HostRegisterRequestForHostServiceDto feignDto = HostRegisterRequestForHostServiceDto.of(
                     hostUuid,

@@ -76,19 +76,21 @@ public class AuthServiceImpl implements AuthService {
         AuthUser user = authRepository.findByEmail(userLoginRequestDto.getEmail())
                 .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
 
-        validateAccountNotLocked(user);
+        if (user.isAccountLocked()) {
+            throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
+        }
 
         if (!userLoginRequestDto.isPasswordMatch(user.getPassword(), passwordEncoder)) {
             handleFailedLogin(user);
             throw new BaseException(ResponseStatus.INVALID_AUTH_PASSWORD);
         }
 
-        resetLoginFailure(user.getEmail());
+        redisService.resetUserLoginFailCount(user.getEmail());
 
         authenticateUser(userLoginRequestDto);
 
-        String accessToken = jwtProvider.generateAccessToken(user.getEmail());
-        String refreshToken = jwtProvider.generateRefreshToken(user.getEmail());
+        String accessToken = jwtProvider.generateAccessToken();
+        String refreshToken = jwtProvider.generateRefreshToken();
 
         redisService.saveRefreshToken(user.getUserUuid(), refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
 
@@ -134,18 +136,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // 🔹 분리된 유틸성 메서드들
-    private void validateAccountNotLocked(AuthUser authUser) {
-        if (authUser.isAccountLocked()) {
-            throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
-        }
-    }
-
     private boolean shouldLockAccount(int currentFailCount) {
         return currentFailCount >= LOGIN_FAIL_LIMIT;
     }
 
     private void handleFailedLogin(AuthUser authUser) {
-        int failCount = redisService.incrementLoginFailCount(authUser.getEmail());
+        int failCount = redisService.incrementUserLoginFailCount(authUser.getEmail());
 
         if (shouldLockAccount(failCount)) {
             authUser.lockAccount();
@@ -162,10 +158,6 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private void resetLoginFailure(String email) {
-        redisService.resetLoginFailCount(email);
-    }
-
     private void authenticateUser(UserLoginRequestDto request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -175,15 +167,7 @@ public class AuthServiceImpl implements AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
-    @Transactional
-    @Override
-    public void checkEmailDuplicate(String email) {
-        if (authRepository.existsByEmail(email)) {
-            throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
-        }
-    }
-
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public boolean isEmailDuplicate(String email) {
         return authRepository.existsByEmail(email);
@@ -229,10 +213,10 @@ public class AuthServiceImpl implements AuthService {
                 throw new BaseException(ResponseStatus.AUTH_USER_REGISTER_FAILED);
             }
 
-            return generateTokensAndSave(newUser.getUserUuid(), newUser.getEmail());
+            return generateTokensAndSave(newUser.getUserUuid());
         }
 
-        return generateTokensAndSave(optionalUser.get().getUserUuid(),optionalUser.get().getEmail());
+        return generateTokensAndSave(optionalUser.get().getUserUuid());
     }
 
     private AuthUser registerNewSocialUser(String email, SocialProvider socialProvider) {
@@ -242,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
                 .userUuid(userUuid)
                 .email(email)
                 .loginType(LoginType.SOCIAL)
-                .provider(socialProvider)
+                .socialProvider(socialProvider)
                 .build();
 
         try {
@@ -252,10 +236,10 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private SocialLoginResponseDto generateTokensAndSave(String userUuid, String email) {
+    private SocialLoginResponseDto generateTokensAndSave(String userUuid) {
 
-        String accessToken = jwtProvider.generateAccessToken(email);
-        String refreshToken = jwtProvider.generateRefreshToken(email);
+        String accessToken = jwtProvider.generateAccessToken();
+        String refreshToken = jwtProvider.generateRefreshToken();
 
         redisService.saveRefreshToken(userUuid, refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
 

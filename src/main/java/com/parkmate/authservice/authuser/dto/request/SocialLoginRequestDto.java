@@ -9,18 +9,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SocialLoginRequestDto {
 
-    private String provider;
+    private String socialProvider;
     private String accessToken;
 
     @Builder
-    private SocialLoginRequestDto(String provider, String accessToken) {
-        this.provider = provider;
+    private SocialLoginRequestDto(String socialProvider, String accessToken) {
+        this.socialProvider = socialProvider;
         this.accessToken = accessToken;
     }
 
     public static SocialLoginRequestDto from(SocialLoginRequestVo socialLoginRequestVo) {
         return SocialLoginRequestDto.builder()
-                .provider(socialLoginRequestVo.getProvider())
+                .socialProvider(socialLoginRequestVo.getSocialProvider())
                 .accessToken(socialLoginRequestVo.getAccessToken())
                 .build();
     }

@@ -1,13 +1,21 @@
 package com.parkmate.authservice.authuser.vo.response;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor(staticName = "of")
 public class EmailDuplicateResponseVo {
 
     private boolean isDuplicate;
+
+    @Builder
+    private EmailDuplicateResponseVo(boolean isDuplicate) {
+        this.isDuplicate = isDuplicate;
+    }
+
+    public static EmailDuplicateResponseVo of(boolean isDuplicate) {
+        return new EmailDuplicateResponseVo(isDuplicate);
+    }
 }

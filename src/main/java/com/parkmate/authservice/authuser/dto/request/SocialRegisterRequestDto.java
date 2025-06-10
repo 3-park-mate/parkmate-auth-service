@@ -15,16 +15,16 @@ public class SocialRegisterRequestDto {
 
     private String userUuid;
     private String email;
-    private SocialProvider provider;
+    private SocialProvider socialProvider;
 
     @Builder
     private SocialRegisterRequestDto(String userUuid,
                                      String email,
-                                     SocialProvider provider
+                                     SocialProvider socialProvider
     ) {
         this.userUuid = userUuid;
         this.email = email;
-        this.provider = provider;
+        this.socialProvider = socialProvider;
 
     }
 
@@ -37,7 +37,7 @@ public class SocialRegisterRequestDto {
         return SocialRegisterRequestDto.builder()
                 .userUuid(UUIDGenerator.generateUUID())
                 .email(socialRegisterRequestVo.getEmail())
-                .provider(socialRegisterRequestVo.getProvider())
+                .socialProvider(socialRegisterRequestVo.getProvider())
                 .build();
     }
 
@@ -47,7 +47,7 @@ public class SocialRegisterRequestDto {
                 .userUuid(userUuid)
                 .email(email)
                 .loginType(LoginType.SOCIAL)
-                .provider(provider)
+                .socialProvider(socialProvider)
                 .build();
     }
 }

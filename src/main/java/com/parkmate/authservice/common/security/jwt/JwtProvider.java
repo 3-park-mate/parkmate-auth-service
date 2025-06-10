@@ -33,20 +33,21 @@ public class JwtProvider {
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(String email) {
-        return createToken(email, accessTokenValidityInMs);
+    public String generateAccessToken() {
+        return createToken("", accessTokenValidityInMs);
     }
 
-    public String generateRefreshToken(String email) {
-        return createToken(email, refreshTokenValidityInMs);
+    public String generateRefreshToken() {
+        return createToken("", refreshTokenValidityInMs);
     }
+
 
     private String createToken(String subject, long validityInMs) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + validityInMs);
 
         return Jwts.builder()
-                .setSubject(subject)
+                .setSubject("")
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(signingKey, SignatureAlgorithm.HS256)

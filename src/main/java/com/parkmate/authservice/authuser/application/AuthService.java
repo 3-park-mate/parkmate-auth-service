@@ -15,8 +15,6 @@ public interface AuthService {
 
     void register(UserRegisterRequestDto userRegisterRequestDto, UserRegisterRequestVo userRegisterRequestVo);
 
-    void checkEmailDuplicate(String email);
-
     boolean isEmailDuplicate(String email);
 
     void sendVerificationCode(String email);
