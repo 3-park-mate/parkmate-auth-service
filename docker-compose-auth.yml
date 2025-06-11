@@ -5,9 +5,9 @@ services:
     container_name: auth-service
     image: 090188239653.dkr.ecr.ap-northeast-2.amazonaws.com/auth-service
     volumes:
-      - /home/ubuntu/config/application-auth.yml:/config/application-auth.yml
+      - /home/ubuntu/config/auth/application.yml:/config/auth/application.yml
     environment:
-      - SPRING_CONFIG_LOCATION=file:/config/application-auth.yml
+      - SPRING_CONFIG_LOCATION=file:/config/auth/application.yml
     ports:
       - "8081:8081"
     env_file:
