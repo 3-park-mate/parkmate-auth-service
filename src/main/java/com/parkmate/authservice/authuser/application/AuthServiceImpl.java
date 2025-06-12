@@ -116,25 +116,34 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             authRepository.save(newUser);
-        } catch (DataIntegrityViolationException e) {
-            throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
-        }
 
-        try {
             UserRegisterRequestForUserServiceDto dto = UserRegisterRequestForUserServiceDto.of(
                     userUuid,
                     userRegisterRequestVo.getName(),
                     userRegisterRequestVo.getPhoneNumber()
             );
+
             userFeignClient.registerUser(dto);
+
+            redisService.deleteVerificationCode(userRegisterRequestDto.getEmail());
+
+        } catch (DataIntegrityViolationException e) {
+
+            String message = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : "";
+            if (message.contains("UK_auth_user_email")) {
+                throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
+            } else if (message.contains("UK_auth_user_userUuid")) {
+                throw new BaseException(ResponseStatus.AUTH_USER_UUID_ALREADY_EXISTS);
+            } else {
+                throw new BaseException(ResponseStatus.INTERNAL_SERVER_ERROR);
+            }
+
         } catch (Exception e) {
+
             authRepository.deleteById(newUser.getId());
             throw new BaseException(ResponseStatus.AUTH_USER_REGISTER_FAILED);
         }
-
-        redisService.deleteVerificationCode(userRegisterRequestDto.getEmail());
     }
-
     // 🔹 분리된 유틸성 메서드들
     private boolean shouldLockAccount(int currentFailCount) {
         return currentFailCount >= LOGIN_FAIL_LIMIT;

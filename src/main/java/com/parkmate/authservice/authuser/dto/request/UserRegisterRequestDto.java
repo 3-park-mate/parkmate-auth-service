@@ -1,6 +1,8 @@
 package com.parkmate.authservice.authuser.dto.request;
 
 import com.parkmate.authservice.authuser.domain.AuthUser;
+import com.parkmate.authservice.authuser.domain.LoginType;
+import com.parkmate.authservice.authuser.domain.SocialProvider;
 import com.parkmate.authservice.authuser.vo.request.UserRegisterRequestVo;
 import lombok.Builder;
 import lombok.Getter;
@@ -35,6 +37,8 @@ public class UserRegisterRequestDto {
                 .userUuid(userUuid)
                 .email(this.email)
                 .password(encodedPassword.encode(this.password))
+                .loginType(LoginType.NORMAL)
+                .socialProvider(SocialProvider.NONE)
                 .build();
     }
 }

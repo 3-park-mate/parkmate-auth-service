@@ -25,14 +25,17 @@ public enum ResponseStatus {
 
     AUTH_FORBIDDEN(HttpStatus.FORBIDDEN, false, 407, "접근 권한이 없습니다."),
 
-    AUTH_USER_NOT_FOUND(HttpStatus.NOT_FOUND, false, 408, "존재하지 않는 사용자입니다."),
-    AUTH_HOST_NOT_FOUND(HttpStatus.NOT_FOUND, false, 409, "존재하지 않는 호스트입니다."),
-    AUTH_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, false, 410, "이미 존재하는 이메일입니다."),
-    AUTH_ACCOUNT_LOCKED(HttpStatus.LOCKED, false, 411, "로그인 실패가 누적되어 계정이 잠금 처리되었습니다. 이메일을 확인하세요."),
+    // ✅ 비즈니스 에러 → OK로 통일 (body.code로 구분)
+    AUTH_USER_NOT_FOUND(HttpStatus.OK, false, 408, "존재하지 않는 사용자입니다."),
+    AUTH_HOST_NOT_FOUND(HttpStatus.OK, false, 409, "존재하지 않는 호스트입니다."),
+    AUTH_EMAIL_ALREADY_EXISTS(HttpStatus.OK, false, 410, "이미 존재하는 이메일입니다."),
+    AUTH_ACCOUNT_LOCKED(HttpStatus.OK, false, 411, "로그인 실패가 누적되어 계정이 잠금 처리되었습니다. 이메일을 확인하세요."),
     AUTH_VERIFICATION_CODE_NOT_FOUND(HttpStatus.UNAUTHORIZED, false, 412, "인증코드가 만료되었거나 존재하지 않습니다."),
-    AUTH_SOCIAL_PROVIDER_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, false, 413, "지원하지 않는 소셜 로그인 제공자입니다."),
+    AUTH_SOCIAL_PROVIDER_NOT_SUPPORTED(HttpStatus.OK, false, 413, "지원하지 않는 소셜 로그인 제공자입니다."),
 
-    AUTH_BIZNO_INVALID(HttpStatus.UNPROCESSABLE_ENTITY, false, 422, "유효하지 않은 사업자등록번호입니다."),
+    AUTH_BIZNO_INVALID(HttpStatus.OK, false, 422, "유효하지 않은 사업자등록번호입니다."),
+    AUTH_USER_UUID_ALREADY_EXISTS(HttpStatus.OK, false, 423, "유효하지 않은 사업자등록번호입니다."),
+
 
     // ❗ 5xx: 서버 오류
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 500, "서버 내부 오류가 발생했습니다."),
@@ -41,6 +44,7 @@ public enum ResponseStatus {
     AUTH_BIZNO_API_FAILED(HttpStatus.SERVICE_UNAVAILABLE, false, 503, "사업자등록번호 검증 서비스에 실패했습니다."),
     AUTH_LOCK_MAIL_FAILED(HttpStatus.SERVICE_UNAVAILABLE, false, 504, "계정 잠금 이메일 발송에 실패했습니다."),
     AUTH_HOST_SERVICE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 505, "호스트 서비스 연동에 실패했습니다.");
+
     private final HttpStatus httpStatus;
     private final boolean isSuccess;
     private final int code;
