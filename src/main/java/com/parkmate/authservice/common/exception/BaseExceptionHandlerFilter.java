@@ -26,15 +26,13 @@ public class BaseExceptionHandlerFilter extends OncePerRequestFilter {
         }
     }
 
-    private void setErrorResponse(HttpServletResponse response, BaseException be) {
+    private void setErrorResponse(HttpServletResponse response,
+                                  BaseException be) {
         ObjectMapper objectMapper = new ObjectMapper();
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-
-        // 여기 고정값 대신 BaseException 내 ResponseStatus에서 httpStatus 사용!
-        response.setStatus(be.getStatus().getHttpStatus().value());
-
-        ApiResponse<?> baseResponse = ApiResponse.error(be.getStatus());
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ApiResponse baseResponse = ApiResponse.error(be.getStatus());
         try {
             response.getWriter().write(objectMapper.writeValueAsString(baseResponse));
         } catch (IOException e) {
