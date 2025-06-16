@@ -17,13 +17,6 @@ public class SocialRegisterRequestVo {
     @Size(min = 2, max = 50, message = "이름은 2~50자 이내여야 합니다.")
     private String name;
 
-    @NotBlank(message = "전화번호는 필수 입력값입니다.")
-    @Pattern(
-            regexp = "^010\\d{8}$",
-            message = "전화번호는 010으로 시작하는 11자리 숫자여야 합니다."
-    )
-    private String phoneNumber;
-
     @NotNull(message = "소셜 제공자는 필수 입력값입니다.")
     private SocialProvider provider;
 }
