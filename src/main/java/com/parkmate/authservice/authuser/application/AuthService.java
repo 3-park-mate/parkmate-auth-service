@@ -22,4 +22,6 @@ public interface AuthService {
     boolean verifyEmailCode(String email, String code);
 
     SocialLoginResponseDto registerSocialUser(String socialAccessToken, SocialRegisterRequestVo socialRegisterRequestVo);
+
+    String getEmailByUserUuid(String userUuid);
 }
