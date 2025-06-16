@@ -130,14 +130,12 @@ public class AuthServiceImpl implements AuthService {
         } catch (DataIntegrityViolationException e) {
 
             String message = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : "";
+
             if (message.contains("UK_auth_user_email")) {
                 throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
-            } else if (message.contains("UK_auth_user_userUuid")) {
-                throw new BaseException(ResponseStatus.AUTH_USER_UUID_ALREADY_EXISTS);
             } else {
                 throw new BaseException(ResponseStatus.INTERNAL_SERVER_ERROR);
             }
-
         } catch (Exception e) {
 
             authRepository.deleteById(newUser.getId());
