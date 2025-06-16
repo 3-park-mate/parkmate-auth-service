@@ -184,6 +184,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void sendVerificationCode(String email) {
+
+        String existingCode = redisService.getVerificationCode(email);
+        if (existingCode != null) {
+            throw new BaseException(ResponseStatus.VERIFICATION_CODE_ALREADY_SENT);
+        }
+
         String code = mailService.generateVerificationCode();
         mailService.sendVerificationEmail(email, code);
         redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL);
@@ -251,6 +257,14 @@ public class AuthServiceImpl implements AuthService {
         redisService.saveRefreshToken(userUuid, refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
 
         return SocialLoginResponseDto.of(userUuid, accessToken, refreshToken);
+    }
+
+    @Transactional
+    @Override
+    public String getEmailByUserUuid(String userUuid) {
+        AuthUser authUser = authRepository.findByUserUuid(userUuid)
+                .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
+        return authUser.getEmail();
     }
 }
 

@@ -44,6 +44,7 @@ public enum ResponseStatus {
     INVALID_SETTLEMENT_CYCLE(HttpStatus.BAD_REQUEST, false, 421, "정산 주기는 1일, 7일, 30일 중 하나여야 합니다."),
     AUTH_BUSINESS_NUMBER_INVALID(HttpStatus.OK, false, 422, "유효하지 않은 사업자등록번호입니다."),
 
+    VERIFICATION_CODE_ALREADY_SENT(HttpStatus.BAD_REQUEST, false, 423, "이미 인증코드가 발송되었습니다. 잠시 후 다시 시도해주세요."),
 
     // ❗ 5xx: 서버 오류
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 500, "서버 내부 오류가 발생했습니다."),

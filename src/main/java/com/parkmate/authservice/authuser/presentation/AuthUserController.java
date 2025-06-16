@@ -147,4 +147,20 @@ public class AuthUserController {
                 SocialLoginResponseVo.from(responseDto)
         );
     }
+
+    @Operation(
+            summary = "UserUuid로 이메일 조회",
+            description = "X-User-UUID 헤더를 기반으로 해당 사용자의 이메일을 조회합니다.",
+            tags = {"AUTH-USER-SERVICE"}
+    )
+    @GetMapping("/email")
+    public ApiResponse<String> getEmailByUserUuid(@RequestHeader("X-User-UUID") String userUuid) {
+
+        String email = authService.getEmailByUserUuid(userUuid);
+        return ApiResponse.of(
+                HttpStatus.OK,
+                "이메일 조회 성공",
+                email
+        );
+    }
 }
