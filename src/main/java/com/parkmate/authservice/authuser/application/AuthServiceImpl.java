@@ -7,6 +7,7 @@ import com.parkmate.authservice.authuser.domain.LoginType;
 import com.parkmate.authservice.authuser.domain.SocialProvider;
 import com.parkmate.authservice.authuser.dto.request.UserLoginRequestDto;
 import com.parkmate.authservice.authuser.dto.request.UserRegisterRequestDto;
+import com.parkmate.authservice.authuser.dto.request.feign.UserRegisterRequestForSocialUserDto;
 import com.parkmate.authservice.authuser.dto.request.feign.UserRegisterRequestForUserServiceDto;
 import com.parkmate.authservice.authuser.dto.response.SocialLoginResponseDto;
 import com.parkmate.authservice.authuser.dto.response.UserLoginResponseDto;
@@ -209,12 +210,11 @@ public class AuthServiceImpl implements AuthService {
             AuthUser newUser = registerNewSocialUser(email, socialRegisterRequestVo.getProvider());
 
             try {
-                UserRegisterRequestForUserServiceDto feignDto = UserRegisterRequestForUserServiceDto.of(
+                UserRegisterRequestForSocialUserDto feignDto = UserRegisterRequestForSocialUserDto.of(
                         newUser.getUserUuid(),
-                        socialRegisterRequestVo.getName(),
-                        socialRegisterRequestVo.getPhoneNumber()
+                        socialRegisterRequestVo.getName()
                 );
-                userFeignClient.registerUser(feignDto);
+                userFeignClient.registerSocialUser(feignDto);
             } catch (Exception e) {
                 authRepository.deleteById(newUser.getId());
                 throw new BaseException(ResponseStatus.AUTH_USER_REGISTER_FAILED);

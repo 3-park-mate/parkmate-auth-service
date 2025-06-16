@@ -38,7 +38,6 @@ public enum ResponseStatus {
     INVALID_PHONE_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 417, "전화번호는 010으로 시작하는 11자리 숫자여야 합니다."),
     INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, false, 418, "인증 코드는 6자리여야 합니다."),
 
-
     // ❌ 공통 유효성 실패 - Host 전용 필드
     INVALID_ACCOUNT_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 419, "계좌번호는 숫자와 '-'만 포함할 수 있으며 9~30자여야 합니다."),
     INVALID_BUSINESS_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 420, "사업자등록번호는 숫자 10자리여야 합니다."),

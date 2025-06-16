@@ -1,5 +1,6 @@
 package com.parkmate.authservice.authuser.infrastructure.client;
 
+import com.parkmate.authservice.authuser.dto.request.feign.UserRegisterRequestForSocialUserDto;
 import com.parkmate.authservice.authuser.dto.request.feign.UserRegisterRequestForUserServiceDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,6 @@ public interface UserFeignClient {
     void registerUser(@RequestBody UserRegisterRequestForUserServiceDto userRegisterRequestForUserServiceDto);
 
     @PostMapping("/internal/users/social")
-    void registerSocialUser(@RequestBody UserRegisterRequestForUserServiceDto userRegisterRequestForUserServiceDto);
+    void registerSocialUser(@RequestBody UserRegisterRequestForSocialUserDto userRegisterRequestForSocialUserDto);
 
 }
