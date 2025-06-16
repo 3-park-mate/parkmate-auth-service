@@ -15,7 +15,6 @@ public enum ResponseStatus {
 
     // ❌ 4xx: 클라이언트 오류
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, false, 400, "잘못된 요청입니다."),
-    INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, false, 401, "비밀번호 형식이 올바르지 않습니다."),
 
     INVALID_AUTH_PASSWORD(HttpStatus.UNAUTHORIZED, false, 402, "비밀번호가 일치하지 않습니다."),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, false, 403, "토큰이 만료되었습니다."),
@@ -33,8 +32,18 @@ public enum ResponseStatus {
     AUTH_VERIFICATION_CODE_NOT_FOUND(HttpStatus.UNAUTHORIZED, false, 412, "인증코드가 만료되었거나 존재하지 않습니다."),
     AUTH_SOCIAL_PROVIDER_NOT_SUPPORTED(HttpStatus.OK, false, 413, "지원하지 않는 소셜 로그인 제공자입니다."),
 
-    AUTH_BIZNO_INVALID(HttpStatus.OK, false, 422, "유효하지 않은 사업자등록번호입니다."),
-    AUTH_USER_UUID_ALREADY_EXISTS(HttpStatus.OK, false, 423, "유효하지 않은 사업자등록번호입니다."),
+    INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, false, 414, "이메일 형식이 올바르지 않습니다."),
+    INVALID_NAME_FORMAT(HttpStatus.BAD_REQUEST, false, 415, "이름은 2~50자 이내여야 합니다."),
+    INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, false, 416, "비밀번호는 영문, 숫자, 특수문자를 포함한 8~20자여야 합니다."),
+    INVALID_PHONE_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 417, "전화번호는 010으로 시작하는 11자리 숫자여야 합니다."),
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, false, 418, "인증 코드는 6자리여야 합니다."),
+
+
+    // ❌ 공통 유효성 실패 - Host 전용 필드
+    INVALID_ACCOUNT_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 419, "계좌번호는 숫자와 '-'만 포함할 수 있으며 9~30자여야 합니다."),
+    INVALID_BUSINESS_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 420, "사업자등록번호는 숫자 10자리여야 합니다."),
+    INVALID_SETTLEMENT_CYCLE(HttpStatus.BAD_REQUEST, false, 421, "정산 주기는 1일, 7일, 30일 중 하나여야 합니다."),
+    AUTH_BUSINESS_NUMBER_INVALID(HttpStatus.OK, false, 422, "유효하지 않은 사업자등록번호입니다."),
 
 
     // ❗ 5xx: 서버 오류

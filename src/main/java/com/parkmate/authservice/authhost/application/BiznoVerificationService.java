@@ -55,7 +55,7 @@ public class BiznoVerificationService {
                 }
 
                 log.warn("⚠️ 유효하지 않은 사업자번호(완화 정책 확인 필요) - 번호: {}, 사유: {}", normalizedBizNo, reason);
-                throw new BaseException(ResponseStatus.AUTH_BIZNO_INVALID, reason);
+                throw new BaseException(ResponseStatus.AUTH_BUSINESS_NUMBER_INVALID, reason);
             }
 
             log.info("✅ 사업자등록번호 검증 성공 - 번호: {}", normalizedBizNo);
@@ -71,7 +71,7 @@ public class BiznoVerificationService {
 
     private void validateBizNoFormat(String bizNo) {
         if (!BIZNO_PATTERN.matcher(bizNo).matches()) {
-            throw new BaseException(ResponseStatus.AUTH_BIZNO_INVALID, "사업자등록번호는 10자리 숫자여야 합니다.");
+            throw new BaseException(ResponseStatus.AUTH_BUSINESS_NUMBER_INVALID, "사업자등록번호는 10자리 숫자여야 합니다.");
         }
     }
 }
