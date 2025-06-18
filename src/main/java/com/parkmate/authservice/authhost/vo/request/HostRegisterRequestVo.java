@@ -46,4 +46,8 @@ public class HostRegisterRequestVo {
 
     // 정산주기는 컨트롤러 단에서 추가 로직으로 검증 권장 (ex: 1, 7, 30일 단위 등)
     private int settlementCycle;
+
+    @NotBlank(message = "인증 코드는 필수 입력값입니다.")
+    @Pattern(regexp = "^\\d{6}$", message = "인증 코드는 6자리 숫자여야 합니다.")
+    private String verificationCode;
 }
