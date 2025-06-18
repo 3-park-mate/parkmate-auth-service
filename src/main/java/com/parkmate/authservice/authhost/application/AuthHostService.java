@@ -13,5 +13,7 @@ public interface AuthHostService {
 
     void register(HostRegisterRequestVo hostRegisterRequestVo);
 
+    boolean isEmailDuplicate(String email);
+
     void sendVerificationCode(String email);
 }
