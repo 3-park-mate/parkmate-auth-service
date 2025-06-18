@@ -1,20 +1,24 @@
 package com.parkmate.authservice.common.redis;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RedisService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final String EMAIL_VERIFICATION_PREFIX = "email:verification:code:";
-    private static final String LOGIN_FAIL_PREFIX = "login:fail:";
-    private static final String HOST_LOGIN_FAIL_PREFIX = "login:fail:host:";
+    // ==================== Redis Key Prefix ====================
+    private static final String EMAIL_VERIFICATION_PREFIX_USER = "email:verification:code:user:";
+    private static final String EMAIL_VERIFICATION_PREFIX_HOST = "email:verification:code:host:";
+    private static final String LOGIN_FAIL_PREFIX_USER = "login:fail:";
+    private static final String LOGIN_FAIL_PREFIX_HOST = "login:fail:host:";
     private static final String REFRESH_TOKEN_PREFIX = "refresh:";
 
     private static final Duration LOGIN_FAIL_TTL = Duration.ofMinutes(15);
@@ -22,37 +26,59 @@ public class RedisService {
 
     // ==================== 이메일 인증 ====================
 
-    public void saveVerificationCode(String email, String code, Duration ttl) {
-        redisTemplate.opsForValue().set(buildEmailVerificationKey(email), code, ttl.toMillis(), TimeUnit.MILLISECONDS);
+    /**
+     * 이메일 인증 코드 저장
+     * @param email 대상 이메일
+     * @param code 인증 코드
+     * @param ttl 유효 시간
+     * @param isHost 호스트 여부
+     */
+    public void saveVerificationCode(String email, String code, Duration ttl, boolean isHost) {
+        String key = buildEmailVerificationKey(email, isHost);
+        redisTemplate.opsForValue().set(key, code, ttl.toMillis(), TimeUnit.MILLISECONDS);
     }
 
-    public boolean verifyEmailCode(String email, String code) {
-        String storedCode = getVerificationCode(email);
+    /**
+     * 이메일 인증 코드 검증
+     */
+    public boolean verifyEmailCode(String email, String code, boolean isHost) {
+
+        if (email == null || code == null) {
+            throw new IllegalArgumentException("이메일 또는 인증코드가 null입니다.");
+        }
+
+        String key = buildEmailVerificationKey(email, isHost);
+        String storedCode = redisTemplate.opsForValue().get(key);
+
         return storedCode != null && storedCode.equals(code);
     }
 
-    public void deleteVerificationCode(String email) {
-        redisTemplate.delete(buildEmailVerificationKey(email));
+    /**
+     * 이메일 인증 코드 조회
+     */
+    public String getVerificationCode(String email, boolean isHost) {
+        return redisTemplate.opsForValue().get(buildEmailVerificationKey(email, isHost));
     }
 
-    public String getVerificationCode(String email) {
-        return redisTemplate.opsForValue().get(buildEmailVerificationKey(email));
+    /**
+     * 이메일 인증 코드 삭제
+     */
+    public void deleteVerificationCode(String email, boolean isHost) {
+        redisTemplate.delete(buildEmailVerificationKey(email, isHost));
     }
 
-    // ==================== 로그인 실패 카운트 (USER) ====================
+    // ==================== 로그인 실패 카운트 ====================
 
     public int incrementUserLoginFailCount(String email) {
-        String key = buildLoginFailKey(email);
+        String key = buildUserLoginFailKey(email);
         Long count = redisTemplate.opsForValue().increment(key);
         redisTemplate.expire(key, LOGIN_FAIL_TTL);
         return count != null ? count.intValue() : 0;
     }
 
     public void resetUserLoginFailCount(String email) {
-        redisTemplate.delete(buildLoginFailKey(email));
+        redisTemplate.delete(buildUserLoginFailKey(email));
     }
-
-    // ==================== 로그인 실패 카운트 (HOST) ====================
 
     public int incrementHostLoginFailCount(String email) {
         String key = buildHostLoginFailKey(email);
@@ -82,16 +108,16 @@ public class RedisService {
 
     // ==================== Key 생성 메서드 ====================
 
-    private String buildEmailVerificationKey(String email) {
-        return EMAIL_VERIFICATION_PREFIX + email.trim();
+    private String buildEmailVerificationKey(String email, boolean isHost) {
+        return (isHost ? EMAIL_VERIFICATION_PREFIX_HOST : EMAIL_VERIFICATION_PREFIX_USER) + email.trim();
     }
 
-    private String buildLoginFailKey(String email) {
-        return LOGIN_FAIL_PREFIX + email.trim();
+    private String buildUserLoginFailKey(String email) {
+        return LOGIN_FAIL_PREFIX_USER + email.trim();
     }
 
     private String buildHostLoginFailKey(String email) {
-        return HOST_LOGIN_FAIL_PREFIX + email.trim();
+        return LOGIN_FAIL_PREFIX_HOST + email.trim();
     }
 
     private String buildRefreshTokenKey(String userUuid) {

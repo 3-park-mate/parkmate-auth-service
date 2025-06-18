@@ -10,6 +10,7 @@ import com.parkmate.authservice.authhost.infrastructure.client.HostFeignClient;
 import com.parkmate.authservice.authhost.vo.request.HostRegisterRequestVo;
 import com.parkmate.authservice.common.exception.BaseException;
 import com.parkmate.authservice.common.generator.UUIDGenerator;
+import com.parkmate.authservice.common.mail.MailService;
 import com.parkmate.authservice.common.redis.RedisService;
 import com.parkmate.authservice.common.response.ResponseStatus;
 import com.parkmate.authservice.common.security.jwt.JwtProvider;
@@ -37,6 +38,7 @@ public class AuthHostServiceImpl implements AuthHostService {
 
     private static final long REFRESH_TOKEN_EXPIRY_MILLIS = Duration.ofDays(7).toMillis();
     private static final int LOGIN_FAIL_LIMIT = 5;
+    private final MailService mailService;
 
     public AuthHostServiceImpl(
             AuthHostRepository authHostRepository,
@@ -45,8 +47,8 @@ public class AuthHostServiceImpl implements AuthHostService {
             JwtProvider jwtProvider,
             HostFeignClient hostFeignClient,
             BiznoVerificationService biznoVerificationService,
-            @Qualifier("hostAuthenticationManager") AuthenticationManager authenticationManager
-    ) {
+            @Qualifier("hostAuthenticationManager") AuthenticationManager authenticationManager,
+            MailService mailService) {
         this.authHostRepository = authHostRepository;
         this.passwordEncoder = passwordEncoder;
         this.redisService = redisService;
@@ -54,6 +56,7 @@ public class AuthHostServiceImpl implements AuthHostService {
         this.hostFeignClient = hostFeignClient;
         this.biznoVerificationService = biznoVerificationService;
         this.authenticationManager = authenticationManager;
+        this.mailService = mailService;
     }
 
     @Transactional
@@ -110,6 +113,16 @@ public class AuthHostServiceImpl implements AuthHostService {
     @Override
     public void register(HostRegisterRequestVo hostRegisterRequestVo) {
 
+        boolean isVerified = redisService.verifyEmailCode(
+                hostRegisterRequestVo.getEmail(),
+                hostRegisterRequestVo.getVerificationCode(),
+                true
+        );
+
+        if (!isVerified) {
+            throw new BaseException(ResponseStatus.INVALID_VERIFICATION_CODE);
+        }
+
         biznoVerificationService.verify(hostRegisterRequestVo.getBusinessRegistrationNumber());
 
         String hostUuid = UUIDGenerator.generateUUID();
@@ -118,21 +131,25 @@ public class AuthHostServiceImpl implements AuthHostService {
         AuthHost host = hostRegisterRequestDto.toEntity(hostUuid, passwordEncoder);
 
         try {
+
             authHostRepository.save(host);
         } catch (DataIntegrityViolationException e) {
             throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
         }
 
         try {
+
             HostRegisterRequestForHostServiceDto feignDto = HostRegisterRequestForHostServiceDto.of(
                     hostUuid,
                     hostRegisterRequestVo
             );
 
             hostFeignClient.registerHost(feignDto);
+
+            redisService.deleteVerificationCode(hostRegisterRequestVo.getEmail(),  true);
+
         } catch (Exception e) {
-            // Rollback 처리
-            authHostRepository.deleteById(host.getId());
+            authHostRepository.deleteById(host.getId()); // rollback
             throw new BaseException(ResponseStatus.AUTH_HOST_SERVICE_ERROR);
         }
     }
@@ -144,5 +161,19 @@ public class AuthHostServiceImpl implements AuthHostService {
                 )
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    @Transactional
+    @Override
+    public void sendVerificationCode(String email) {
+
+        String existingCode = redisService.getVerificationCode(email, true);
+        if (existingCode != null) {
+            throw new BaseException(ResponseStatus.VERIFICATION_CODE_ALREADY_SENT);
+        }
+
+        String code = mailService.generateVerificationCode();
+        mailService.sendVerificationEmail(email, code);
+        redisService.saveVerificationCode(email, code, Duration.ofMinutes(3), true);
     }
 }

@@ -10,9 +10,11 @@ import com.parkmate.authservice.authhost.vo.response.HostLoginResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/host")
 @RequiredArgsConstructor
@@ -61,10 +63,28 @@ public class AuthHostController {
     @PostMapping("/register")
     public ApiResponse<String> register(@Valid @RequestBody HostRegisterRequestVo hostRegisterRequestVo) {
 
+        log.info("받은 이메일: '{}'", hostRegisterRequestVo.getEmail());
+        log.info("받은 인증코드: '{}'", hostRegisterRequestVo.getVerificationCode());
+
         authHostService.register(hostRegisterRequestVo);
         return ApiResponse.of(
                 HttpStatus.CREATED,
                 "호스트 회원가입이 완료되었습니다."
+        );
+    }
+
+    @Operation(
+            summary = "이메일 인증코드 발송",
+            description = "사용자 이메일로 인증코드를 발송합니다.",
+            tags = {"AUTH-USER-SERVICE"}
+    )
+    @PostMapping("/sendVerificationCode")
+    public ApiResponse<String> sendVerificationCode(@RequestParam String email) {
+
+        authHostService.sendVerificationCode(email);
+        return ApiResponse.of(
+                HttpStatus.OK,
+                "인증 코드가 이메일로 전송되었습니다."
         );
     }
 }

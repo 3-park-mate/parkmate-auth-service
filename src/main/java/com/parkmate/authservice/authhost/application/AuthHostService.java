@@ -12,4 +12,6 @@ public interface AuthHostService {
     void logout(String hostUuid);
 
     void register(HostRegisterRequestVo hostRegisterRequestVo);
+
+    void sendVerificationCode(String email);
 }

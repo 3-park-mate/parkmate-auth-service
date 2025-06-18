@@ -112,6 +112,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void register(UserRegisterRequestDto userRegisterRequestDto, UserRegisterRequestVo userRegisterRequestVo) {
 
+
+        // 🔐 1. 이메일 인증 코드 검증 (vo에서 꺼냄)
+        boolean isVerified = redisService.verifyEmailCode(
+                userRegisterRequestDto.getEmail(),
+                userRegisterRequestVo.getVerificationCode(), // <-- 여기서 꺼냄
+                false // 일반 사용자
+        );
+
+        if (!isVerified) {
+            throw new BaseException(ResponseStatus.INVALID_VERIFICATION_CODE);
+        }
+
         String userUuid = UUIDGenerator.generateUUID();
         AuthUser newUser = userRegisterRequestDto.toEntity(userUuid, passwordEncoder);
 
@@ -126,7 +138,7 @@ public class AuthServiceImpl implements AuthService {
 
             userFeignClient.registerUser(dto);
 
-            redisService.deleteVerificationCode(userRegisterRequestDto.getEmail());
+            redisService.deleteVerificationCode(userRegisterRequestDto.getEmail(), false);
 
         } catch (DataIntegrityViolationException e) {
 
@@ -185,21 +197,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void sendVerificationCode(String email) {
 
-        String existingCode = redisService.getVerificationCode(email);
+        String existingCode = redisService.getVerificationCode(email, false);
         if (existingCode != null) {
             throw new BaseException(ResponseStatus.VERIFICATION_CODE_ALREADY_SENT);
         }
 
         String code = mailService.generateVerificationCode();
         mailService.sendVerificationEmail(email, code);
-        redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL);
+        redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL, false);
     }
 
     @Transactional
     @Override
     public boolean verifyEmailCode(String email, String code) {
 
-        return redisService.verifyEmailCode(email, code);
+        return redisService.verifyEmailCode(email, code, false);
     }
 
     @Transactional
