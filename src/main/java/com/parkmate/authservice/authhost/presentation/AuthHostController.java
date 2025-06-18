@@ -76,7 +76,7 @@ public class AuthHostController {
     @Operation(
             summary = "이메일 인증코드 발송",
             description = "사용자 이메일로 인증코드를 발송합니다.",
-            tags = {"AUTH-USER-SERVICE"}
+            tags = {"AUTH-HOST-SERVICE"}
     )
     @PostMapping("/sendVerificationCode")
     public ApiResponse<String> sendVerificationCode(@RequestParam String email) {
