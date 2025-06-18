@@ -163,6 +163,12 @@ public class AuthHostServiceImpl implements AuthHostService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public boolean isEmailDuplicate(String email) {
+        return authHostRepository.existsByEmail(email);
+    }
+
     @Transactional
     @Override
     public void sendVerificationCode(String email) {

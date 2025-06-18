@@ -7,4 +7,6 @@ import java.util.Optional;
 public interface AuthHostRepository extends JpaRepository<AuthHost, Long> {
 
     Optional<AuthHost> findByEmail(String email);
+
+    boolean existsByEmail(String email);
 }
