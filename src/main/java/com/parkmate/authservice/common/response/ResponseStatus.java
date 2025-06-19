@@ -41,10 +41,13 @@ public enum ResponseStatus {
     // ❌ 공통 유효성 실패 - Host 전용 필드
     INVALID_ACCOUNT_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 419, "계좌번호는 숫자와 '-'만 포함할 수 있으며 9~30자여야 합니다."),
     INVALID_BUSINESS_NUMBER_FORMAT(HttpStatus.BAD_REQUEST, false, 420, "사업자등록번호는 숫자 10자리여야 합니다."),
-    INVALID_SETTLEMENT_CYCLE(HttpStatus.BAD_REQUEST, false, 421, "정산 주기는 1일, 7일, 30일 중 하나여야 합니다."),
+    INVALID_SETTLEMENT_CYCLE(HttpStatus.BAD_REQUEST, false, 421, "정산 주기는 15일 또는 30일만 가능합니다."),
     AUTH_BUSINESS_NUMBER_INVALID(HttpStatus.OK, false, 422, "유효하지 않은 사업자등록번호입니다."),
 
     VERIFICATION_CODE_ALREADY_SENT(HttpStatus.BAD_REQUEST, false, 423, "이미 인증코드가 발송되었습니다. 잠시 후 다시 시도해주세요."),
+    VERIFICATION_ATTEMPT_BLOCKED(HttpStatus.UNAUTHORIZED, false, 424, "인증코드 입력 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
+    INVALID_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, false, 425, "인증번호가 일치하지 않습니다."),
+
 
     // ❗ 5xx: 서버 오류
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, false, 500, "서버 내부 오류가 발생했습니다."),

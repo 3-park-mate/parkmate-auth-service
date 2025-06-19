@@ -20,6 +20,7 @@ import com.parkmate.authservice.common.generator.UUIDGenerator;
 import com.parkmate.authservice.common.mail.MailService;
 import com.parkmate.authservice.common.redis.RedisService;
 import com.parkmate.authservice.common.response.ResponseStatus;
+import com.parkmate.authservice.common.roletype.RoleType;
 import com.parkmate.authservice.common.security.jwt.JwtProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,7 +45,6 @@ public class AuthServiceImpl implements AuthService {
     private final MailService mailService;
     private final OAuthServiceFactory oAuthServiceFactory;
     private final AuthenticationManager authenticationManager;
-
 
     public AuthServiceImpl(
             AuthRepository authRepository,
@@ -73,7 +73,6 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public UserLoginResponseDto login(UserLoginRequestDto userLoginRequestDto) {
-
         AuthUser user = authRepository.findByEmail(userLoginRequestDto.getEmail())
                 .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_USER_NOT_FOUND));
 
@@ -86,20 +85,14 @@ public class AuthServiceImpl implements AuthService {
             throw new BaseException(ResponseStatus.INVALID_AUTH_PASSWORD);
         }
 
-        redisService.resetUserLoginFailCount(user.getEmail());
-
+        redisService.resetLoginFailCount(user.getEmail(), RoleType.USER);
         authenticateUser(userLoginRequestDto);
 
         String accessToken = jwtProvider.generateAccessToken();
         String refreshToken = jwtProvider.generateRefreshToken();
-
         redisService.saveRefreshToken(user.getUserUuid(), refreshToken, REFRESH_TOKEN_EXPIRY_MILLIS);
 
         return UserLoginResponseDto.of(user.getUserUuid(), accessToken, refreshToken);
-    }
-
-    private boolean isAccountLocked(AuthUser user) {
-        return user.isAccountLocked();
     }
 
     @Transactional
@@ -111,13 +104,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void register(UserRegisterRequestDto userRegisterRequestDto, UserRegisterRequestVo userRegisterRequestVo) {
-
-
-        // 🔐 1. 이메일 인증 코드 검증 (vo에서 꺼냄)
         boolean isVerified = redisService.verifyEmailCode(
                 userRegisterRequestDto.getEmail(),
-                userRegisterRequestVo.getVerificationCode(), // <-- 여기서 꺼냄
-                false // 일반 사용자
+                userRegisterRequestVo.getVerificationCode(),
+                RoleType.USER
         );
 
         if (!isVerified) {
@@ -129,49 +119,40 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             authRepository.save(newUser);
-
             UserRegisterRequestForUserServiceDto dto = UserRegisterRequestForUserServiceDto.of(
                     userUuid,
                     userRegisterRequestVo.getName(),
                     userRegisterRequestVo.getPhoneNumber()
             );
-
             userFeignClient.registerUser(dto);
-
-            redisService.deleteVerificationCode(userRegisterRequestDto.getEmail(), false);
-
+            redisService.deleteVerificationCode(userRegisterRequestDto.getEmail(), RoleType.USER);
         } catch (DataIntegrityViolationException e) {
-
             String message = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : "";
-
             if (message.contains("UK_auth_user_email")) {
                 throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
             } else {
                 throw new BaseException(ResponseStatus.INTERNAL_SERVER_ERROR);
             }
         } catch (Exception e) {
-
             authRepository.deleteById(newUser.getId());
             throw new BaseException(ResponseStatus.AUTH_USER_REGISTER_FAILED);
         }
     }
-    // 🔹 분리된 유틸성 메서드들
+
     private boolean shouldLockAccount(int currentFailCount) {
         return currentFailCount >= LOGIN_FAIL_LIMIT;
     }
 
     private void handleFailedLogin(AuthUser authUser) {
-        int failCount = redisService.incrementUserLoginFailCount(authUser.getEmail());
+        int failCount = redisService.incrementLoginFailCount(authUser.getEmail(), RoleType.USER);
 
         if (shouldLockAccount(failCount)) {
             authUser.lockAccount();
             authRepository.save(authUser);
-
             try {
                 String userName = userFeignClient.findNameByEmail(authUser.getEmail());
                 mailService.sendAccountLockEmail(authUser.getEmail(), userName);
             } catch (Exception e) {
-                // 로그 처리 또는 감싸기
                 throw new BaseException(ResponseStatus.AUTH_LOCK_MAIL_FAILED);
             }
             throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
@@ -196,22 +177,38 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void sendVerificationCode(String email) {
-
-        String existingCode = redisService.getVerificationCode(email, false);
+        RoleType roleType = RoleType.USER;
+        String existingCode = redisService.getVerificationCode(email, roleType);
         if (existingCode != null) {
             throw new BaseException(ResponseStatus.VERIFICATION_CODE_ALREADY_SENT);
         }
 
         String code = mailService.generateVerificationCode();
         mailService.sendVerificationEmail(email, code);
-        redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL, false);
+        redisService.saveVerificationCode(email, code, EMAIL_VERIFICATION_TTL, roleType);
     }
 
     @Transactional
     @Override
     public boolean verifyEmailCode(String email, String code) {
+        RoleType roleType = RoleType.USER;
+        if (redisService.isVerificationAttemptBlocked(email, roleType)) {
+            throw new BaseException(ResponseStatus.VERIFICATION_ATTEMPT_BLOCKED);
+        }
 
-        return redisService.verifyEmailCode(email, code, false);
+        boolean isVerified = redisService.verifyEmailCode(email, code, roleType);
+
+        if (!isVerified) {
+            int failCount = redisService.incrementVerificationAttemptFailCount(email, roleType);
+            if (failCount > 5) {
+                redisService.blockVerificationAttempts(email, roleType, Duration.ofMinutes(10));
+                throw new BaseException(ResponseStatus.VERIFICATION_ATTEMPT_BLOCKED);
+            }
+            throw new BaseException(ResponseStatus.INVALID_VERIFICATION_CODE_MISMATCH);
+        }
+
+        redisService.resetVerificationAttemptFailCount(email, roleType);
+        return true;
     }
 
     @Transactional
