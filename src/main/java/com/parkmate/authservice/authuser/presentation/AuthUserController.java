@@ -108,12 +108,19 @@ public class AuthUserController {
 
     @Operation(
             summary = "이메일 인증코드 검증",
-            description = "사용자가 입력한 이메일 인증코드를 검증합니다.",
+            description = """
+        사용자가 입력한 이메일 인증코드를 검증합니다. <br><br>
+        🔐 인증 실패 시 다음과 같은 제한이 적용됩니다: <br>
+        - 인증 코드 5회 실패 시 10분간 인증 시도 차단<br>
+        - 인증코드 재요청 시 실패 횟수 초기화<br><br>
+        ❗ 인증 코드 유효 시간은 3분입니다.
+        """,
             tags = {"AUTH-USER-SERVICE"}
     )
     @PostMapping("/verifyCode")
-    public ApiResponse<VerifyEmailCodeResponseVo> verifyEmailCode(@Valid @RequestBody VerifyEmailCodeRequestVo verifyEmailCodeRequestVo) {
-
+    public ApiResponse<VerifyEmailCodeResponseVo> verifyEmailCode(
+            @Valid @RequestBody VerifyEmailCodeRequestVo verifyEmailCodeRequestVo
+    ) {
         boolean isValid = authService.verifyEmailCode(
                 verifyEmailCodeRequestVo.getEmail(),
                 verifyEmailCodeRequestVo.getVerificationCode()

@@ -30,6 +30,10 @@ public class HostRegisterRequestVo {
     )
     private String phoneNumber;
 
+    @NotBlank(message = "은행 이름은 필수 입력값입니다.")
+    @Size(min = 2, max = 50, message = "은행 이름은 2~50자 이내여야 합니다.")
+    private String bankName;
+
     @NotBlank(message = "계좌번호는 필수 입력값입니다.")
     @Pattern(
             regexp = "^[0-9-]{9,30}$",

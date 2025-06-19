@@ -1,7 +1,9 @@
 package com.parkmate.authservice.authhost.presentation;
 
 import com.parkmate.authservice.authuser.vo.request.EmailDuplicateCheckRequestVo;
+import com.parkmate.authservice.authuser.vo.request.VerifyEmailCodeRequestVo;
 import com.parkmate.authservice.authuser.vo.response.EmailDuplicateResponseVo;
+import com.parkmate.authservice.authuser.vo.response.VerifyEmailCodeResponseVo;
 import com.parkmate.authservice.common.response.ApiResponse;
 import com.parkmate.authservice.authhost.application.AuthHostService;
 import com.parkmate.authservice.authhost.dto.request.HostLoginRequestDto;
@@ -104,6 +106,33 @@ public class AuthHostController {
         return ApiResponse.of(
                 HttpStatus.OK,
                 "인증 코드가 이메일로 전송되었습니다."
+        );
+    }
+
+    @Operation(
+            summary = "이메일 인증코드 검증",
+            description = """
+        사용자가 입력한 이메일 인증코드를 검증합니다. <br><br>
+        🔐 인증 실패 시 다음과 같은 제한이 적용됩니다: <br>
+        - 인증 코드 5회 실패 시 10분간 인증 시도 차단<br>
+        - 인증코드 재요청 시 실패 횟수 초기화<br><br>
+        ❗ 인증 코드 유효 시간은 3분입니다.
+        """,
+            tags = {"AUTH-HOST-SERVICE"}
+    )
+    @PostMapping("/verifyCode")
+    public ApiResponse<VerifyEmailCodeResponseVo> verifyEmailCode(
+            @Valid @RequestBody VerifyEmailCodeRequestVo verifyEmailCodeRequestVo
+    ) {
+        boolean isValid = authHostService.verifyEmailCode(
+                verifyEmailCodeRequestVo.getEmail(),
+                verifyEmailCodeRequestVo.getVerificationCode()
+        );
+
+        return ApiResponse.of(
+                HttpStatus.OK,
+                "이메일 인증번호 검증 성공",
+                VerifyEmailCodeResponseVo.of(isValid)
         );
     }
 }

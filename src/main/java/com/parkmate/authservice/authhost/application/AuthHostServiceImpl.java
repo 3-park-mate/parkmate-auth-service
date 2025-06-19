@@ -13,6 +13,7 @@ import com.parkmate.authservice.common.generator.UUIDGenerator;
 import com.parkmate.authservice.common.mail.MailService;
 import com.parkmate.authservice.common.redis.RedisService;
 import com.parkmate.authservice.common.response.ResponseStatus;
+import com.parkmate.authservice.common.roletype.RoleType;
 import com.parkmate.authservice.common.security.jwt.JwtProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -35,10 +36,10 @@ public class AuthHostServiceImpl implements AuthHostService {
     private final AuthenticationManager authenticationManager;
     private final HostFeignClient hostFeignClient;
     private final BiznoVerificationService biznoVerificationService;
+    private final MailService mailService;
 
     private static final long REFRESH_TOKEN_EXPIRY_MILLIS = Duration.ofDays(7).toMillis();
     private static final int LOGIN_FAIL_LIMIT = 5;
-    private final MailService mailService;
 
     public AuthHostServiceImpl(
             AuthHostRepository authHostRepository,
@@ -63,7 +64,7 @@ public class AuthHostServiceImpl implements AuthHostService {
     @Override
     public HostLoginResponseDto login(HostLoginRequestDto hostLoginRequestDto) {
 
-        AuthHost authHost= authHostRepository.findByEmail(hostLoginRequestDto.getEmail())
+        AuthHost authHost = authHostRepository.findByEmail(hostLoginRequestDto.getEmail())
                 .orElseThrow(() -> new BaseException(ResponseStatus.AUTH_HOST_NOT_FOUND));
 
         if (authHost.isAccountLocked()) {
@@ -75,7 +76,7 @@ public class AuthHostServiceImpl implements AuthHostService {
             throw new BaseException(ResponseStatus.INVALID_AUTH_PASSWORD);
         }
 
-        redisService.resetHostLoginFailCount(authHost.getEmail());
+        redisService.resetLoginFailCount(authHost.getEmail(), RoleType.HOST);
 
         authenticateHost(hostLoginRequestDto);
 
@@ -88,13 +89,11 @@ public class AuthHostServiceImpl implements AuthHostService {
     }
 
     private void handleFailedLogin(AuthHost authHost) {
-        int failCount = redisService.incrementHostLoginFailCount(authHost.getEmail());
+        int failCount = redisService.incrementLoginFailCount(authHost.getEmail(), RoleType.HOST);
 
         if (shouldLockAccount(failCount)) {
-
             authHost.lockAccount();
             authHostRepository.save(authHost);
-
             throw new BaseException(ResponseStatus.AUTH_ACCOUNT_LOCKED);
         }
     }
@@ -113,10 +112,15 @@ public class AuthHostServiceImpl implements AuthHostService {
     @Override
     public void register(HostRegisterRequestVo hostRegisterRequestVo) {
 
+        int cycle = hostRegisterRequestVo.getSettlementCycle();
+        if (cycle != 15 && cycle != 30) {
+            throw new BaseException(ResponseStatus.INVALID_SETTLEMENT_CYCLE);
+        }
+
         boolean isVerified = redisService.verifyEmailCode(
                 hostRegisterRequestVo.getEmail(),
                 hostRegisterRequestVo.getVerificationCode(),
-                true
+                RoleType.HOST
         );
 
         if (!isVerified) {
@@ -131,14 +135,12 @@ public class AuthHostServiceImpl implements AuthHostService {
         AuthHost host = hostRegisterRequestDto.toEntity(hostUuid, passwordEncoder);
 
         try {
-
             authHostRepository.save(host);
         } catch (DataIntegrityViolationException e) {
             throw new BaseException(ResponseStatus.AUTH_EMAIL_ALREADY_EXISTS);
         }
 
         try {
-
             HostRegisterRequestForHostServiceDto feignDto = HostRegisterRequestForHostServiceDto.of(
                     hostUuid,
                     hostRegisterRequestVo
@@ -146,10 +148,10 @@ public class AuthHostServiceImpl implements AuthHostService {
 
             hostFeignClient.registerHost(feignDto);
 
-            redisService.deleteVerificationCode(hostRegisterRequestVo.getEmail(),  true);
+            redisService.deleteVerificationCode(hostRegisterRequestVo.getEmail(), RoleType.HOST);
 
         } catch (Exception e) {
-            authHostRepository.deleteById(host.getId()); // rollback
+            authHostRepository.deleteById(host.getId());
             throw new BaseException(ResponseStatus.AUTH_HOST_SERVICE_ERROR);
         }
     }
@@ -173,13 +175,37 @@ public class AuthHostServiceImpl implements AuthHostService {
     @Override
     public void sendVerificationCode(String email) {
 
-        String existingCode = redisService.getVerificationCode(email, true);
+        RoleType roleType = RoleType.HOST;
+
+        String existingCode = redisService.getVerificationCode(email, roleType);
         if (existingCode != null) {
             throw new BaseException(ResponseStatus.VERIFICATION_CODE_ALREADY_SENT);
         }
 
         String code = mailService.generateVerificationCode();
         mailService.sendVerificationEmail(email, code);
-        redisService.saveVerificationCode(email, code, Duration.ofMinutes(3), true);
+        redisService.saveVerificationCode(email, code, Duration.ofMinutes(3), roleType);
+    }
+
+    @Override
+    public boolean verifyEmailCode(String email, String code) {
+
+        if (redisService.isVerificationAttemptBlocked(email, RoleType.HOST)) {
+            throw new BaseException(ResponseStatus.VERIFICATION_ATTEMPT_BLOCKED);
+        }
+
+        boolean isVerified = redisService.verifyEmailCode(email, code, RoleType.HOST);
+
+        if (!isVerified) {
+            int failCount = redisService.incrementVerificationAttemptFailCount(email, RoleType.HOST);
+            if (failCount > 5) {
+                redisService.blockVerificationAttempts(email, RoleType.HOST, Duration.ofMinutes(10));
+                throw new BaseException(ResponseStatus.VERIFICATION_ATTEMPT_BLOCKED);
+            }
+            throw new BaseException(ResponseStatus.INVALID_VERIFICATION_CODE_MISMATCH);
+        }
+
+        redisService.resetVerificationAttemptFailCount(email, RoleType.HOST);
+        return true;
     }
 }

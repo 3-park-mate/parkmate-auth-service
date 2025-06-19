@@ -16,4 +16,6 @@ public interface AuthHostService {
     boolean isEmailDuplicate(String email);
 
     void sendVerificationCode(String email);
+
+    boolean verifyEmailCode(String email, String code);
 }
