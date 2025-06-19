@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 )
 public interface BiznoFeignClient {
 
-    @PostMapping(value = "/fapi", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @GetMapping(value = "/fapi", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     @Headers("Content-Type: application/x-www-form-urlencoded")
     BiznoValidationResponseDto validateBizNumber(
             @RequestParam("key") String key,

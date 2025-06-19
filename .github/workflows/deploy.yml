@@ -5,6 +5,7 @@ on:
     branches:
       - dev
       - chore/cicd-init-setup
+      - test/min-seok-auth-test
 
 jobs:
   deploy:
